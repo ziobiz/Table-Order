@@ -1,0 +1,70 @@
+<?php
+// review_write.php - 고객 리뷰 작성 페이지
+if (session_status() == PHP_SESSION_NONE) { session_start(); }
+include 'db_config.php';
+
+$order_id = $_GET['order_id'] ?? 0;
+$store_id = 1; // 실제 환경에서는 주문 데이터를 통해 store_id를 가져옴
+
+// 1. 가맹점 리뷰 활성화 여부 체크
+$store = $pdo->query("SELECT store_name, use_review FROM stores WHERE id = $store_id")->fetch();
+if (!$store['use_review']) {
+    echo "<script>alert('해당 매장은 현재 리뷰 기능을 사용하지 않습니다.'); history.back();</script>"; exit;
+}
+
+// 2. 이미 리뷰를 작성했는지 체크 (중복 방지)
+$existing = $pdo->prepare("SELECT id FROM reviews WHERE order_id = ?");
+$existing->execute([$order_id]);
+if ($existing->fetch()) {
+    echo "<script>alert('이미 리뷰를 작성한 주문입니다.'); history.back();</script>"; exit;
+}
+
+// 3. 리뷰 저장 로직
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $stmt = $pdo->prepare("INSERT INTO reviews (order_id, store_id, rating, comment) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$order_id, $store_id, $_POST['rating'], $_POST['comment']]);
+    echo "<script>alert('리뷰가 소중히 전달되었습니다. 감사합니다!'); location.href='index.php';</script>"; exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review - <?php echo $store['store_name']; ?></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .star-rating input:checked ~ label { color: #0ea5e9; }
+        .star-rating label:hover, .star-rating label:hover ~ label { color: #38bdf8; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col items-center p-6">
+    <div class="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden mt-10">
+        <div class="p-8 bg-slate-900 text-white text-center">
+            <h2 class="text-2xl font-black italic text-sky-400 uppercase tracking-tighter">Customer Review</h2>
+            <p class="text-[10px] text-slate-500 font-bold uppercase mt-1">Order Ref #<?php echo $order_id; ?></p>
+        </div>
+
+        <form method="POST" class="p-10 space-y-8">
+            <div class="text-center">
+                <p class="font-black text-slate-800 text-lg mb-4 italic uppercase">How was your meal?</p>
+                <div class="flex flex-row-reverse justify-center space-x-2 space-x-reverse star-rating">
+                    <?php for($i=5; $i>=1; $i--): ?>
+                    <input type="radio" id="star<?php echo $i; ?>" name="rating" value="<?php echo $i; ?>" class="hidden" required <?php echo $i==5?'checked':''; ?>>
+                    <label for="star<?php echo $i; ?>" class="text-4xl cursor-pointer text-slate-200 transition-colors">★</label>
+                    <?php endfor; ?>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Your Comment</label>
+                <textarea name="comment" rows="4" placeholder="음식의 맛과 서비스는 어떠셨나요? 사장님께 큰 힘이 됩니다." class="w-full p-5 bg-slate-50 rounded-2xl border-0 ring-1 ring-slate-100 focus:ring-2 focus:ring-sky-500 font-medium outline-none transition-all"></textarea>
+            </div>
+
+            <button type="submit" class="w-full p-6 bg-sky-500 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-sky-100 hover:bg-sky-600 transition-all active:scale-95 uppercase tracking-widest">Submit Review</button>
+        </form>
+    </div>
+    
+    <button onclick="history.back()" class="mt-8 text-slate-400 font-black text-xs uppercase tracking-widest border-b border-slate-200 pb-1">Maybe Later</button>
+</body>
+</html>
