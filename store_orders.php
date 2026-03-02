@@ -362,7 +362,7 @@ $btnKdsClass = $theme['btnKds'] ?? 'bg-sky-600 hover:bg-sky-700 text-white';
                     $statusLabel = strtoupper($status);
                 }
 
-                // 테마별 카드 색상
+                // 테마별 카드 색상 + 주방 호출 시 파스텔 레드 테두리/배경 강조
                 $baseCard = $theme['card'];
                 if ($status === 'pending') {
                     $stateColor = $theme['pending'];
@@ -370,6 +370,11 @@ $btnKdsClass = $theme['btnKds'] ?? 'bg-sky-600 hover:bg-sky-700 text-white';
                     $stateColor = $theme['cooking'];
                 } else {
                     $stateColor = $theme['served'];
+                }
+                $hasKitchenCall = !empty($o['kitchen_call']) && (int)$o['kitchen_call'] === 1;
+                if ($hasKitchenCall) {
+                    // 주방 호출된 주문은 항상 파스텔 레드 테두리/배경으로 강조
+                    $stateColor = 'border-rose-400 bg-rose-50';
                 }
 
                 $btnColor = $status=='pending' ? 'bg-rose-500' : ($status=='cooking' ? 'bg-amber-500' : 'bg-emerald-500');
@@ -431,14 +436,6 @@ $btnKdsClass = $theme['btnKds'] ?? 'bg-sky-600 hover:bg-sky-700 text-white';
                         <?php echo htmlspecialchars($o['items_summary']); ?>
                     </p>
                     <?php endif; ?>
-                    <?php
-                        $hasKitchenCall = !empty($o['kitchen_call']) && (int)$o['kitchen_call'] === 1;
-                        if ($hasKitchenCall):
-                    ?>
-                        <div class="mt-2 px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-[11px] font-black">
-                            주방에서 호출합니다.
-                        </div>
-                    <?php endif; ?>
                     <div class="flex justify-between items-center mt-2">
                         <span class="text-[10px] font-bold text-slate-400 uppercase"><?php
                             $pm = $o['payment_method'] ?? 'CASH';
@@ -487,11 +484,17 @@ $btnKdsClass = $theme['btnKds'] ?? 'bg-sky-600 hover:bg-sky-700 text-white';
 
                 <div class="flex gap-2">
                     <?php if($status=='cooking' || $status=='pending'): ?>
-                        <a href="?status=SERVED&oid=<?php echo $o['id']; ?>"
-                           onclick="return confirm('음식이 모두 준비되지 않았을 수 있습니다.\n정말 서빙완료로 처리하시겠습니까?');"
-                           class="flex-1 bg-emerald-500 text-white py-3 rounded-xl text-center font-black shadow-md hover:bg-emerald-600">
-                            Serve Done ✅
-                        </a>
+                        <?php if ($hasKitchenCall): ?>
+                            <div class="flex-1 bg-rose-100 text-rose-600 py-3 rounded-xl text-center font-black shadow-md border border-rose-300 text-[13px]">
+                                주방에서 호출합니다.
+                            </div>
+                        <?php else: ?>
+                            <a href="?status=SERVED&oid=<?php echo $o['id']; ?>"
+                               onclick="return confirm('음식이 모두 준비되지 않았을 수 있습니다.\n정말 서빙완료로 처리하시겠습니까?');"
+                               class="flex-1 bg-emerald-500 text-white py-3 rounded-xl text-center font-black shadow-md hover:bg-emerald-600">
+                                Serve Done ✅
+                            </a>
+                        <?php endif; ?>
                     <?php elseif($status=='served'): ?>
                         <a href="?status=PAID&oid=<?php echo $o['id']; ?>" class="flex-1 bg-slate-800 text-white py-3 rounded-xl text-center font-black shadow-md hover:bg-slate-900">Payment Complete 💰</a>
                     <?php endif; ?>

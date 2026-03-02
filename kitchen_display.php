@@ -335,22 +335,28 @@ try {
     if (isset($_GET['call_order'])) {
         $order_id = (int)$_GET['call_order'];
         $redirect = 'kitchen_display.php?store_id=' . $store_id;
-        $chk = $pdo->prepare("SELECT store_id FROM orders WHERE id = ?");
+        $chk = $pdo->prepare("SELECT store_id, kitchen_call FROM orders WHERE id = ?");
         $chk->execute([$order_id]);
         $row = $chk->fetch(PDO::FETCH_ASSOC);
 
         if (!$row || (int)$row['store_id'] !== $store_id) {
             $redirect .= '&sync_fail=1';
         } else {
-            // orders 테이블에 kitchen_call 플래그가 있다고 가정 (마이그레이션 필요)
-            $pdo->prepare("UPDATE orders SET kitchen_call = 1, kitchen_call_at = NOW() WHERE id = ? AND store_id = ?")->execute([$order_id, $store_id]);
+            $currentCall = (int)($row['kitchen_call'] ?? 0);
+            if ($currentCall === 1) {
+                // 이미 호출 상태면 호출 취소
+                $pdo->prepare("UPDATE orders SET kitchen_call = 0, kitchen_call_at = NULL WHERE id = ? AND store_id = ?")->execute([$order_id, $store_id]);
+            } else {
+                // 호출 상태가 아니면 호출 ON
+                $pdo->prepare("UPDATE orders SET kitchen_call = 1, kitchen_call_at = NOW() WHERE id = ? AND store_id = ?")->execute([$order_id, $store_id]);
+            }
         }
         header('Location: ' . $redirect);
         exit;
     }
 
     // 3. 해당 가맹점 주문 중 미완료(미서빙) 항목만 조회 (실시간 주문용)
-    $sql = "SELECT o.id AS order_id, o.created_at, o.order_type,
+    $sql = "SELECT o.id AS order_id, o.created_at, o.order_type, o.kitchen_call,
             oi.id AS item_id, oi.quantity, oi.item_status, mt.menu_name
             FROM orders o
             -- 아직 서빙되지 않은 항목만 (소문자 served 기준)
@@ -369,10 +375,11 @@ try {
         $oid = $r['order_id'];
         if (!isset($orders_active[$oid])) {
             $orders_active[$oid] = [
-                'order_id'   => $oid,
-                'created_at' => $r['created_at'],
-                'order_type' => $r['order_type'],
-                'items'      => [],
+                'order_id'     => $oid,
+                'created_at'   => $r['created_at'],
+                'order_type'   => $r['order_type'],
+                'kitchen_call' => isset($r['kitchen_call']) ? (int)$r['kitchen_call'] : 0,
+                'items'        => [],
             ];
         }
         $orders_active[$oid]['items'][] = [
@@ -400,6 +407,7 @@ try {
             o.created_at,
             o.updated_at,
             o.order_type,
+            o.kitchen_call,
             GROUP_CONCAT(CONCAT(mt.menu_name, ' x', oi.quantity) ORDER BY oi.id SEPARATOR ', ') AS items_summary
         FROM orders o
         JOIN order_items oi ON oi.order_id = o.id
@@ -585,6 +593,9 @@ try {
                             }
                         }
                     ?>
+                        <?php
+                            $isCalled = (int)($ord['kitchen_call'] ?? 0) === 1;
+                        ?>
                         <div class="<?php echo $kitchen_theme['card']; ?> rounded-2xl overflow-hidden shadow-2xl <?php echo $kitchen_theme['cardBorder']; ?> <?php echo $ageClass; ?>">
                             <div class="<?php echo $kitchen_theme['cardHeader']; ?> p-4 flex justify-between items-center">
                                 <div>
@@ -612,7 +623,7 @@ try {
                                         <?php endif; ?>
                                         <a href="kitchen_display.php?store_id=<?php echo $store_id; ?>&call_order=<?php echo $ord['order_id']; ?>"
                                            class="bg-rose-500 text-white px-4 py-2 rounded-xl font-black text-xs hover:bg-rose-600">
-                                            호출
+                                            <?php echo $isCalled ? '호출취소' : '호출'; ?>
                                         </a>
                                     </div>
                                 <?php else: ?>
