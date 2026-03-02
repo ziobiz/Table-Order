@@ -87,6 +87,11 @@ function getTrxBadge($type) {
     }
 }
 
+$admin_id = (int)($_SESSION['admin_id'] ?? 0);
+$admin_username = $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+$admin_name = $_SESSION['admin_name'] ?? $admin_username;
+$admin_login_at = (int)($_SESSION['admin_login_at'] ?? time());
+$header_locale = 'ko';
 $use_sidebar = (($_SESSION['admin_layout'] ?? '') === 'sidebar');
 if ($use_sidebar) {
     $admin_page_title = 'Trx Ledger';
@@ -94,33 +99,13 @@ if ($use_sidebar) {
     include 'admin_header.php';
 }
 ?>
-<?php if (!$use_sidebar): ?>
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Trx Ledger - Alrira</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
-        body { font-family: 'Pretendard', sans-serif; letter-spacing: -0.025em; }
-    </style>
-</head>
-<body class="bg-slate-100 min-h-screen p-6 md:p-12">
-    <div class="max-w-[96rem] mx-auto space-y-8">
-        <header class="flex justify-between items-end">
-            <div>
-                <h1 class="text-4xl font-black italic text-slate-900 uppercase tracking-tighter">Trx Ledger</h1>
-                <p class="text-slate-500 text-xs font-bold mt-2 uppercase">전체 거래 흐름 및 감사 로그</p>
-            </div>
-            <div class="flex space-x-2">
-                <button onclick="location.href='admin_dashboard.php'" class="bg-white border-2 border-slate-200 px-6 py-3 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all">Back to Dashboard</button>
-            </div>
-        </header>
-<?php endif; ?>
+<?php if (!$use_sidebar):
+    $admin_page_title = 'Trx Ledger';
+    $admin_page_subtitle = '전체 거래 흐름 및 감사 로그';
+    include 'admin_card_header.php';
+endif; ?>
 
-        <div class="max-w-[96rem] space-y-8">
+        <div class="max-w-[96rem] space-y-10">
         <form class="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-100 flex flex-wrap gap-4 items-end">
             <div class="flex flex-col gap-1">
                 <label class="text-[9px] font-bold text-slate-400 uppercase">Asset Type</label>
@@ -150,7 +135,7 @@ if ($use_sidebar) {
             <button type="submit" class="bg-slate-900 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg hover:bg-slate-800 transition-all">FILTER</button>
         </form>
 
-        <div class="bg-white rounded-[2rem] shadow-xl border border-slate-100 overflow-hidden">
+        <div class="bg-white rounded-[2rem] shadow-lg border border-slate-100 overflow-hidden">
             <table class="w-full text-left border-collapse">
                 <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-black tracking-widest border-b border-slate-100">
                     <tr>
@@ -214,7 +199,5 @@ if ($use_sidebar) {
 <?php if ($use_sidebar): ?>
 <?php include 'admin_footer.php'; ?>
 <?php else: ?>
-    </div>
-</body>
-</html>
+<?php include 'admin_card_footer.php'; ?>
 <?php endif; ?>

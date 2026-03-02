@@ -23,6 +23,10 @@ if (isset($_POST['update_status'])) {
     $stmt = $pdo->prepare("UPDATE waiting_list SET status = ? WHERE id = ? AND store_id = ?");
     $stmt->execute([$new_status, $id, $my_store_id]);
 
+    $admin_id = (int)($_SESSION['admin_id'] ?? $_SESSION['store_id'] ?? 0);
+    $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? $_SESSION['name'] ?? ('id_' . $admin_id);
+    log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_waiting_manage', 'update', 'waiting', (string)$id, "대기 상태 변경: ID {$id} → {$new_status}");
+
     // [참고] 여기서 $new_status가 'called'일 때 알림톡 API 함수를 호출하면 됩니다.
     if ($new_status === 'called') {
         // sendNotification($id); // 추후 API 연동 시 주석 해제

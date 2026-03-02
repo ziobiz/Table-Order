@@ -6,6 +6,7 @@ include 'db_config.php';
 if (($_SESSION['admin_role'] ?? '') !== 'SUPERADMIN') {
     echo "<script>alert('본사 관리자 전용입니다.'); location.href='login.php';</script>"; exit;
 }
+include 'common.php';
 
 // 리스트별 메뉴형식 템플릿: 식당 특성에 맞는 주문 방식(옵션 그룹·항목) 포함
 // 구조: [포맷명, 설명, 카테고리[], 옵션그룹[]] / 옵션그룹: [그룹명, 필수여부, 최대선택수, 항목들[이름,가격]]
@@ -191,6 +192,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $ins_item->execute([$group_id, $it[0], $price, $price, $price]);
             }
         }
+        $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+        $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+        log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_menu_format_edit', 'create', 'menu_format', (string)$format_id, "메뉴 포맷 템플릿 생성: {$format_name} (ID {$format_id})");
         echo "<script>alert('" . addslashes($msg) . "'); location.href='admin_menu_by_format.php?format_id=" . $format_id . "';</script>"; exit;
     } catch (PDOException $e) {
         $err = $e->getMessage();
@@ -209,6 +213,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         $ins_item2->execute([$group_id, $it[0], $price, $price, $price]);
                     }
                 }
+                $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+                $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+                log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_menu_format_edit', 'create', 'menu_format', (string)$format_id, "메뉴 포맷 템플릿 생성: {$format_name} (ID {$format_id})");
                 echo "<script>alert('" . addslashes($msg) . "'); location.href='admin_menu_by_format.php?format_id=" . $format_id . "';</script>"; exit;
             } catch (PDOException $e2) {
                 $err = $e2->getMessage();
@@ -240,10 +247,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
             if ($id > 0) {
                 $pdo->prepare("UPDATE menu_formats SET name=?, description=?, sort_order=?, is_active=? WHERE id=?")
                     ->execute([$name, $description, $sort_order, $is_active, $id]);
+                $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+                $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+                log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_menu_format_edit', 'update', 'menu_format', (string)$id, "메뉴 포맷 수정: {$name} (ID {$id})");
                 echo "<script>alert('수정되었습니다.'); location.href='admin_menu_format_list.php';</script>"; exit;
             } else {
                 $pdo->prepare("INSERT INTO menu_formats (name, description, sort_order, is_active) VALUES (?,?,?,?)")
                     ->execute([$name, $description, $sort_order, $is_active]);
+                $new_id = $pdo->lastInsertId();
+                $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+                $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+                log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_menu_format_edit', 'create', 'menu_format', (string)$new_id, "메뉴 포맷 등록: {$name} (ID {$new_id})");
                 echo "<script>alert('추가되었습니다.'); location.href='admin_menu_format_list.php';</script>"; exit;
             }
         } catch (PDOException $e) {

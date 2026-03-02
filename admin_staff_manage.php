@@ -28,6 +28,9 @@ if (isset($_POST['add_staff'])) {
     try {
         $stmt = $pdo->prepare("INSERT INTO staff_members (store_id, username, password, name, email, role, force_password_change, is_active) VALUES (?, ?, ?, ?, ?, ?, 1, 1)");
         $stmt->execute([$target_store, $uname, $temp_pw, $name, $email, $role]);
+        $admin_id = (int)($_SESSION['admin_id'] ?? $_SESSION['store_id'] ?? 0);
+        $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? $_SESSION['name'] ?? ('id_' . $admin_id);
+        log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_staff_manage', 'create', 'staff', (string)$pdo->lastInsertId(), "직원 등록: {$name} ({$uname})");
         echo "<script>alert('등록 성공! 초기 비밀번호는 [ $uname" . "1! ] 입니다.'); location.href='admin_staff_manage.php';</script>";
         exit;
     } catch (PDOException $e) {
@@ -44,6 +47,9 @@ if (isset($_POST['approve_reset'])) {
     
     $stmt = $pdo->prepare("UPDATE staff_members SET password = ?, reset_requested = 0, force_password_change = 1, reset_approved_at = ? WHERE id = ?");
     $stmt->execute([$temp_pw_hash, $now, $uid]);
+    $admin_id = (int)($_SESSION['admin_id'] ?? $_SESSION['store_id'] ?? 0);
+    $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? $_SESSION['name'] ?? ('id_' . $admin_id);
+    log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_staff_manage', 'approve', 'staff', (string)$uid, "비밀번호 초기화 승인: {$uname} (ID {$uid})");
     echo "<script>alert('승인 완료! [ $uname" . "1! ] 로 초기화되었습니다.'); location.href='admin_staff_manage.php';</script>";
     exit;
 }

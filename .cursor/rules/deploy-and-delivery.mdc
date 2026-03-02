@@ -11,9 +11,9 @@ alwaysApply: true
 - 사용자는 이 목록대로 FTP로 서버에 덮어쓰기해서 확인한다.
 
 ## 2. 사이트 주소(URL)
-- 사이트에서 직접 봐야 하는 내용이라 **URL이 필요할 때**는 앞에 **wirexcard.net** 을 붙여서 한 번에 클릭해 볼 수 있게 한다.
-- 예: `https://wirexcard.net/menu.php` 형태로 작성한다.
-- 상대 경로만 적지 말고, 확인용 링크는 `https://wirexcard.net/...` 로 제공한다.
+- 사이트에서 직접 봐야 하는 내용이라 **URL이 필요할 때**는 **하이퍼링크**로 제공한다.
+- 형식: `[표시 텍스트](https://wirexcard.net/경로)` — 클릭 가능한 링크로 작성.
+- 예: [메뉴 보기](https://wirexcard.net/menu.php). 상대 경로만 적지 말고, 확인용은 `https://wirexcard.net/...` 로 제공.
 
 ## 3. DB(phpMyAdmin) 작업
 - DB 구조 변경이나 마이그레이션이 필요하면 사용자가 **phpMyAdmin에 접속해 SQL을 직접 입력·실행**한다.

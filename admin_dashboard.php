@@ -5,7 +5,7 @@ include 'common.php';
 $admin_id = (int)($_SESSION['admin_id'] ?? 0);
 $admin_username = $_SESSION['admin_username'] ?? ('id_' . $admin_id);
 $admin_name = $_SESSION['admin_name'] ?? $admin_username;
-$login_at = (int)($_SESSION['admin_login_at'] ?? time());
+$admin_login_at = (int)($_SESSION['admin_login_at'] ?? time());
 $header_locale = 'ko';
 
 $use_sidebar = (($_SESSION['admin_layout'] ?? '') === 'sidebar');
@@ -25,18 +25,18 @@ if ($use_sidebar) {
     <script src="https://cdn.tailwindcss.com"></script>
     <style>@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap'); body { font-family: 'Pretendard'; }</style>
 </head>
-<body class="bg-slate-50 min-h-screen p-8">
-    <div class="max-w-[96rem] mx-auto">
-        <header class="flex flex-wrap items-center justify-between gap-3 mb-10">
+<body class="bg-slate-100 min-h-screen p-6 md:p-12">
+    <div class="max-w-[96rem] mx-auto space-y-10">
+        <header class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2 shrink-0">
-                <h1 class="text-2xl font-black italic text-slate-900 uppercase">HQ Dashboard</h1>
+                <h1 class="text-2xl font-black italic text-slate-900 uppercase tracking-tighter">HQ Dashboard</h1>
                 <span class="text-xs text-slate-400 font-bold hidden sm:inline">본사 통합 관리 · 타블렛/간편 보기</span>
             </div>
             <div class="flex flex-wrap items-center justify-end gap-4 sm:gap-6 text-xs font-bold">
-                <a href="admin_layout_switch.php?layout=sidebar&back=admin_dashboard.php" class="px-4 py-2 bg-violet-500 text-white rounded-xl hover:bg-violet-600 font-black uppercase shrink-0">PC 업무 모드 (사이드바)</a>
-                <span class="text-slate-500 whitespace-nowrap"><span class="text-slate-400">접속자</span> <?php echo htmlspecialchars($admin_name); ?></span>
+                <a href="admin_layout_switch.php?layout=sidebar&back=admin_dashboard.php" class="px-4 py-2 bg-violet-500 text-white rounded-2xl hover:bg-violet-600 font-black uppercase shrink-0">PC 업무 모드 (사이드바)</a>
+                <span class="text-slate-500 whitespace-nowrap">접속자 ID <?php echo htmlspecialchars($admin_username); ?> · <?php echo htmlspecialchars($admin_name); ?></span>
                 <span id="current-datetime" class="text-slate-600 whitespace-nowrap">—</span>
-                <span class="text-slate-500 whitespace-nowrap">머문 <span id="elapsed-time" class="text-slate-700">0분 0초</span></span>
+                <span class="text-slate-500 whitespace-nowrap">머문 <span id="elapsed-time">0분 0초</span></span>
                 <a href="logout.php" class="text-rose-500 hover:underline whitespace-nowrap shrink-0">Logout</a>
             </div>
         </header>
@@ -55,10 +55,28 @@ if ($use_sidebar) {
                 <p class="text-xs text-slate-400 mt-2">온라인 입점 신청 목록 · 승인 시 계정 오픈</p>
             </a>
 
+            <a href="admin_revenue.php" class="bg-white p-8 rounded-[2rem] shadow-lg border border-sky-200 hover:border-sky-500 hover:shadow-xl transition-all group">
+                <div class="w-12 h-12 bg-sky-100 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">📈</div>
+                <h3 class="text-lg font-black text-slate-800">매출 리포팅</h3>
+                <p class="text-xs text-slate-400 mt-2">채널별·결제수단별·메뉴별 매출, 기간 필터</p>
+            </a>
+
+            <a href="admin_gift_card.php" class="bg-white p-8 rounded-[2rem] shadow-lg border border-slate-100 hover:border-rose-500 hover:shadow-xl transition-all group">
+                <div class="w-12 h-12 bg-rose-100 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">🎁</div>
+                <h3 class="text-lg font-black text-slate-800">기프트카드 발급</h3>
+                <p class="text-xs text-slate-400 mt-2">기프트카드 발급·잔액 조회·주문 시 사용</p>
+            </a>
+
             <a href="admin_menu_format_list.php" class="bg-white p-8 rounded-[2rem] shadow-lg border border-slate-100 hover:border-sky-500 hover:shadow-xl transition-all group">
                 <div class="w-12 h-12 bg-sky-100 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">📋</div>
                 <h3 class="text-lg font-black text-slate-800">메뉴 스킨</h3>
                 <p class="text-xs text-slate-400 mt-2">업종별 주문 메뉴 형식(스킨) 제공·카테고리/메뉴/옵션 관리</p>
+            </a>
+
+            <a href="admin_region_manage.php" class="bg-white p-8 rounded-[2rem] shadow-lg border border-slate-100 hover:border-emerald-500 hover:shadow-xl transition-all group">
+                <div class="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">🗺️</div>
+                <h3 class="text-lg font-black text-slate-800">Region Groups</h3>
+                <p class="text-xs text-slate-400 mt-2">멀티 포인트 공유용 지역 그룹 관리</p>
             </a>
 
             <a href="admin_policy_manage.php" class="bg-white p-8 rounded-[2rem] shadow-lg border border-slate-100 hover:border-amber-500 hover:shadow-xl transition-all group">

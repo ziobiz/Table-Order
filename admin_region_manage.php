@@ -18,6 +18,10 @@ if (isset($_POST['add_region'])) {
         try {
             $stmt = $pdo->prepare("INSERT INTO region_groups (group_name, description) VALUES (?, ?)");
             $stmt->execute([$name, $desc]);
+            $new_id = $pdo->lastInsertId();
+            $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+            $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+            log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_region_manage', 'create', 'region', (string)$new_id, "지역 그룹 등록: {$name}");
             echo "<script>location.href='admin_region_manage.php';</script>"; exit;
         } catch (PDOException $e) {
             echo "<script>alert('등록 실패: " . addslashes($e->getMessage()) . "');</script>";
@@ -30,7 +34,11 @@ if (isset($_POST['add_region'])) {
 // 2. 그룹 삭제 로직
 if (isset($_GET['delete'])) {
     try {
-        $pdo->prepare("DELETE FROM region_groups WHERE id = ?")->execute([$_GET['delete']]);
+        $del_id = (int)$_GET['delete'];
+        $pdo->prepare("DELETE FROM region_groups WHERE id = ?")->execute([$del_id]);
+        $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+        $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+        log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_region_manage', 'delete', 'region', (string)$del_id, "지역 그룹 삭제: ID {$del_id}");
         echo "<script>location.href='admin_region_manage.php';</script>"; exit;
     } catch (PDOException $e) {
         echo "<script>alert('삭제 실패: " . addslashes($e->getMessage()) . "');</script>";
@@ -44,32 +52,18 @@ try {
     $regions = [];
     echo "<script>console.log('DB 테이블이 아직 없습니다.');</script>";
 }
-?>
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>Region Management - Alrira</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
-        body { font-family: 'Pretendard', sans-serif; letter-spacing: -0.025em; }
-    </style>
-</head>
-<body class="bg-slate-100 min-h-screen p-6 md:p-12">
-    <div class="max-w-[96rem] mx-auto space-y-10">
-        
-        <header class="flex justify-between items-end">
-            <div>
-                <h1 class="text-4xl font-black italic text-slate-900 uppercase tracking-tighter">Region Groups</h1>
-                <p class="text-slate-500 text-xs font-bold mt-2 uppercase">멀티 포인트 공유 그룹 관리</p>
-            </div>
-            <div class="flex space-x-2">
-                <button onclick="location.href='admin_dashboard.php'" class="bg-white border-2 border-slate-200 px-6 py-3 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all">Back to Dashboard</button>
-            </div>
-        </header>
 
-        <div class="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 p-8">
+$admin_id = (int)($_SESSION['admin_id'] ?? 0);
+$admin_username = $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+$admin_name = $_SESSION['admin_name'] ?? $admin_username;
+$admin_login_at = (int)($_SESSION['admin_login_at'] ?? time());
+$header_locale = 'ko';
+$admin_page_title = 'Region Groups';
+$admin_page_subtitle = '멀티 포인트 공유 그룹 관리';
+include 'admin_card_header.php';
+?>
+
+        <div class="bg-white rounded-[2rem] shadow-lg border border-slate-100 p-8">
             <form method="POST" class="flex flex-col md:flex-row gap-4 items-end">
                 <div class="flex-1 w-full">
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Group Name</label>
@@ -85,7 +79,7 @@ try {
             </form>
         </div>
 
-        <div class="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden">
+        <div class="bg-white rounded-[2rem] shadow-lg border border-slate-100 overflow-hidden">
             <table class="w-full text-left">
                 <thead class="bg-slate-50 border-b border-slate-100">
                     <tr>
@@ -114,6 +108,4 @@ try {
             </table>
         </div>
 
-    </div>
-</body>
-</html>
+<?php include 'admin_card_footer.php'; ?>

@@ -9,7 +9,10 @@ if (($_SESSION['admin_role'] ?? '') !== 'SUPERADMIN') {
     echo "<script>alert('본사 관리자 전용 페이지입니다.'); location.href='login.php';</script>"; exit;
 }
 $admin_id = (int)($_SESSION['admin_id'] ?? 0);
-$admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? 'Admin';
+$admin_username = $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+$admin_name = $_SESSION['admin_name'] ?? $admin_username;
+$admin_login_at = (int)($_SESSION['admin_login_at'] ?? time());
+$header_locale = 'ko';
 
 // --------------------------------------------------------------------------------
 // [주문 승인/거절 로직]
@@ -80,34 +83,14 @@ if ($use_sidebar) {
     include 'admin_header.php';
 }
 ?>
-<?php if (!$use_sidebar): ?>
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sales Approval - Alrira</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
-        body { font-family: 'Pretendard', sans-serif; letter-spacing: -0.025em; }
-    </style>
-</head>
-<body class="bg-slate-100 min-h-screen p-6 md:p-12">
-    <div class="max-w-[96rem] mx-auto space-y-8">
-        <header class="flex justify-between items-end">
-            <div>
-                <h1 class="text-4xl font-black italic text-slate-900 uppercase tracking-tighter">Sales Approval</h1>
-                <p class="text-slate-500 text-xs font-bold mt-2 uppercase">가맹점 포인트/쿠폰 구매 승인</p>
-            </div>
-            <div class="flex space-x-2">
-                <button onclick="location.href='admin_dashboard.php'" class="bg-white border-2 border-slate-200 px-6 py-3 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all">Back to Dashboard</button>
-            </div>
-        </header>
-<?php endif; ?>
+<?php if (!$use_sidebar):
+    $admin_page_title = 'Sales 승인';
+    $admin_page_subtitle = '가맹점 포인트/쿠폰 구매 승인';
+    include 'admin_card_header.php';
+endif; ?>
 
-        <div class="max-w-[96rem] space-y-8">
-        <div class="bg-white rounded-[2rem] shadow-xl border border-slate-100 overflow-hidden">
+        <div class="max-w-[96rem] space-y-10">
+        <div class="bg-white rounded-[2rem] shadow-lg border border-slate-100 overflow-hidden">
             <table class="w-full text-left border-collapse">
                 <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-black tracking-widest border-b border-slate-100">
                     <tr>
@@ -175,7 +158,5 @@ if ($use_sidebar) {
 <?php if ($use_sidebar): ?>
 <?php include 'admin_footer.php'; ?>
 <?php else: ?>
-    </div>
-</body>
-</html>
+<?php include 'admin_card_footer.php'; ?>
 <?php endif; ?>

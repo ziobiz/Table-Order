@@ -101,9 +101,32 @@ $available_point = (int)$stmt_pt->fetchColumn();
                 <span class="text-xl font-black text-slate-800 uppercase">Total Amount</span>
                 <span class="text-3xl font-black text-sky-500 italic"><?php echo number_format($total_amount); ?>원</span>
             </div>
+
+            <div class="pt-6 border-t border-slate-100">
+                <p class="text-xs font-bold text-slate-500 uppercase mb-3">체크 분할</p>
+                <div class="flex flex-wrap gap-3 items-center">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="split_type" value="FULL" checked class="split-type accent-sky-500">
+                        <span class="text-sm font-bold text-slate-700">한 번에 결제</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="split_type" value="BY_GUESTS" class="split-type accent-sky-500">
+                        <span class="text-sm font-bold text-slate-700">인원 수로 나누기</span>
+                    </label>
+                    <span id="split-guests-wrap" class="hidden items-center gap-2">
+                        <span class="text-xs text-slate-500">인원</span>
+                        <input type="number" id="split_guests" min="2" max="20" value="2" class="w-16 border border-slate-200 rounded-xl px-2 py-2 text-sm font-bold text-center">
+                        <span class="text-xs text-slate-500">명</span>
+                        <span id="per-person-label" class="text-sm font-black text-emerald-600"></span>
+                    </span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">인원 수로 나누면 1인당 금액만 참고용으로 표시됩니다. 결제는 매장에서 진행합니다.</p>
+            </div>
         </div>
 
-        <form action="order_complete.php" method="post" class="space-y-4">
+        <form action="order_complete.php" method="post" class="space-y-4" id="checkout-form">
+            <input type="hidden" name="split_type" id="form_split_type" value="FULL">
+            <input type="hidden" name="split_guests" id="form_split_guests" value="1">
             <!-- 기본 고객 정보 (회원/비회원 공통) -->
             <div class="bg-white rounded-[2.5rem] shadow-xl p-6 space-y-4">
                 <div>
@@ -134,9 +157,54 @@ $available_point = (int)$stmt_pt->fetchColumn();
                 <?php else: ?>
                     <input type="hidden" name="use_point" value="0">
                 <?php endif; ?>
+
+                <div id="gift-card-section">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">기프트카드</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="gift_code" name="gift_card_code" placeholder="GC-XXXX-XXXX" class="flex-1 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-400">
+                        <button type="button" id="btn-check-gift" class="px-4 py-3 rounded-2xl bg-sky-100 text-sky-700 font-black text-xs uppercase hover:bg-sky-200 border border-sky-200 transition">확인</button>
+                    </div>
+                    <div id="gift-result" class="mt-2 text-xs font-bold hidden"></div>
+                    <div id="gift-use-wrap" class="mt-2 hidden">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">사용할 금액 (원)</label>
+                        <input type="number" id="use_gift_card" name="use_gift_card_amount" min="0" value="0" class="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold">
+                        <input type="hidden" id="gift_card_id" name="gift_card_id" value="">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">결제 수단</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-sky-300 cursor-pointer transition has-[:checked]:border-sky-500 has-[:checked]:bg-sky-50">
+                            <input type="radio" name="payment_method" value="CASH" checked class="accent-sky-500">
+                            <span class="text-sm font-bold text-slate-700">현금</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-sky-300 cursor-pointer transition has-[:checked]:border-sky-500 has-[:checked]:bg-sky-50">
+                            <input type="radio" name="payment_method" value="CARD" class="accent-sky-500">
+                            <span class="text-sm font-bold text-slate-700">카드</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-sky-300 cursor-pointer transition has-[:checked]:border-sky-500 has-[:checked]:bg-sky-50">
+                            <input type="radio" name="payment_method" value="MOBILE" class="accent-sky-500">
+                            <span class="text-sm font-bold text-slate-700">모바일</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-sky-300 cursor-pointer transition has-[:checked]:border-sky-500 has-[:checked]:bg-sky-50">
+                            <input type="radio" name="payment_method" value="POINT" class="accent-sky-500">
+                            <span class="text-sm font-bold text-slate-700">포인트</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-sky-300 cursor-pointer transition has-[:checked]:border-sky-500 has-[:checked]:bg-sky-50">
+                            <input type="radio" name="payment_method" value="GIFT_CARD" class="accent-sky-500">
+                            <span class="text-sm font-bold text-slate-700">기프트카드</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-sky-300 cursor-pointer transition has-[:checked]:border-sky-500 has-[:checked]:bg-sky-50">
+                            <input type="radio" name="payment_method" value="MIXED" class="accent-sky-500">
+                            <span class="text-sm font-bold text-slate-700">혼합</span>
+                        </label>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">매장에서 결제할 방식을 선택하세요.</p>
+                </div>
             </div>
 
-            <a href="menu.php?order_type=<?php echo urlencode($order_type_for_menu); ?>" class="flex items-center justify-center w-full h-14 rounded-[2rem] bg-slate-100 text-slate-600 font-black text-sm uppercase tracking-widest hover:bg-slate-200 transition mb-3">
+            <a href="menu.php?order_type=<?php echo urlencode($order_type_for_menu); ?>" class="flex items-center justify-center w-full h-14 rounded-[2rem] bg-sky-100 text-sky-700 font-black text-sm uppercase tracking-widest hover:bg-sky-200 border border-sky-200 transition mb-3">
                 추가 주문하기
             </a>
             <button type="submit" class="w-full h-20 bg-sky-500 text-white rounded-[2.5rem] shadow-xl shadow-sky-100 font-black text-xl uppercase tracking-widest hover:bg-sky-600 transition">
@@ -144,5 +212,104 @@ $available_point = (int)$stmt_pt->fetchColumn();
             </button>
         </form>
     </div>
+    <script>
+    (function(){
+        var totalAmount = <?php echo (int)$total_amount; ?>;
+        var giftBalance = 0;
+        var giftCardId = 0;
+        var elCode = document.getElementById('gift_code');
+        var elResult = document.getElementById('gift-result');
+        var elUseWrap = document.getElementById('gift-use-wrap');
+        var elUse = document.getElementById('use_gift_card');
+        var elId = document.getElementById('gift_card_id');
+        var btn = document.getElementById('btn-check-gift');
+
+        function resetGift(){
+            giftBalance = 0;
+            giftCardId = 0;
+            elUseWrap.classList.add('hidden');
+            elResult.classList.add('hidden');
+            elUse.value = '0';
+            elId.value = '';
+        }
+
+        btn.addEventListener('click', function(){
+            var code = (elCode.value || '').trim().replace(/[\s\-]/g,'').toUpperCase();
+            if (code.length < 8) {
+                elResult.textContent = '코드를 입력해 주세요.';
+                elResult.classList.remove('hidden');
+                elResult.className = 'mt-2 text-xs font-bold text-rose-600';
+                resetGift();
+                return;
+            }
+            btn.disabled = true;
+            elResult.textContent = '확인 중...';
+            elResult.classList.remove('hidden');
+            elResult.className = 'mt-2 text-xs font-bold text-slate-500';
+            var fd = new FormData();
+            fd.append('gift_code', code);
+            fetch('api/gift_card_check.php', { method: 'POST', body: fd })
+                .then(function(r){ return r.json(); })
+                .then(function(data){
+                    btn.disabled = false;
+                    if (data.status === 'success') {
+                        giftBalance = data.balance;
+                        giftCardId = data.gift_card_id;
+                        elId.value = giftCardId;
+                        elResult.textContent = '잔액: ' + data.balance.toLocaleString() + '원';
+                        elResult.className = 'mt-2 text-xs font-bold text-emerald-600';
+                        elUseWrap.classList.remove('hidden');
+                        var maxUse = Math.min(giftBalance, totalAmount);
+                        elUse.max = maxUse;
+                        elUse.value = maxUse > 0 ? maxUse : 0;
+                    } else {
+                        resetGift();
+                        elResult.textContent = data.message || '조회 실패';
+                        elResult.className = 'mt-2 text-xs font-bold text-rose-600';
+                    }
+                })
+                .catch(function(){
+                    btn.disabled = false;
+                    resetGift();
+                    elResult.textContent = '조회 중 오류가 발생했습니다.';
+                    elResult.className = 'mt-2 text-xs font-bold text-rose-600';
+                });
+        });
+
+        elCode.addEventListener('input', function(){ resetGift(); });
+
+        var splitTypeRadios = document.querySelectorAll('input.split-type');
+        var splitGuestsWrap = document.getElementById('split-guests-wrap');
+        var splitGuestsInput = document.getElementById('split_guests');
+        var formSplitType = document.getElementById('form_split_type');
+        var formSplitGuests = document.getElementById('form_split_guests');
+        var perPersonLabel = document.getElementById('per-person-label');
+
+        function updateSplit() {
+            var isByGuests = document.querySelector('input.split-type[value="BY_GUESTS"]').checked;
+            formSplitType.value = isByGuests ? 'BY_GUESTS' : 'FULL';
+            if (isByGuests) {
+                splitGuestsWrap.classList.remove('hidden');
+                splitGuestsWrap.classList.add('flex');
+                var n = parseInt(splitGuestsInput.value, 10) || 2;
+                if (n < 2) n = 2;
+                if (n > 20) n = 20;
+                splitGuestsInput.value = n;
+                formSplitGuests.value = n;
+                var per = Math.floor(totalAmount / n);
+                perPersonLabel.textContent = '1인당 ' + per.toLocaleString() + '원';
+            } else {
+                splitGuestsWrap.classList.add('hidden');
+                splitGuestsWrap.classList.remove('flex');
+                formSplitGuests.value = '1';
+                perPersonLabel.textContent = '';
+            }
+        }
+        splitTypeRadios.forEach(function(r){ r.addEventListener('change', updateSplit); });
+        if (splitGuestsInput) splitGuestsInput.addEventListener('input', updateSplit);
+        if (splitGuestsInput) splitGuestsInput.addEventListener('change', updateSplit);
+        updateSplit();
+    })();
+    </script>
 </body>
 </html>

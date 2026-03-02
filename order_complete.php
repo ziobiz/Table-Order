@@ -14,11 +14,27 @@ $store_id = $_SESSION['store_id'] ?? 1; // 매장 ID (QR 또는 세션에서 인
 // 로그인 회원이면 user_id 사용, 아니면 NULL로 저장 (비회원 주문)
 $user_id = $_SESSION['user_id'] ?? null;
 $use_point = isset($_POST['use_point']) ? (int)$_POST['use_point'] : 0;
+$use_gift_card = isset($_POST['use_gift_card_amount']) ? (int)$_POST['use_gift_card_amount'] : 0;
+$gift_card_id = isset($_POST['gift_card_id']) ? (int)$_POST['gift_card_id'] : 0;
+
+// 결제 수단 (CASH|CARD|MOBILE|POINT|GIFT_CARD|MIXED|OTHER)
+$allowed_methods = ['CASH', 'CARD', 'MOBILE', 'POINT', 'GIFT_CARD', 'MIXED', 'OTHER'];
+$payment_method = isset($_POST['payment_method']) && in_array($_POST['payment_method'], $allowed_methods, true)
+    ? $_POST['payment_method'] : 'CASH';
 
 // [추가] 배달용 주소 및 전화번호, 비회원 이름/닉네임 수신
 $guest_name = $_POST['guest_name'] ?? '';
 $address = $_POST['address'] ?? ''; 
 $tel = $_POST['tel'] ?? '';
+
+// 체크 분할: FULL(한번에) | BY_GUESTS(인원수로 나누기)
+$split_type = isset($_POST['split_type']) && $_POST['split_type'] === 'BY_GUESTS' ? 'BY_GUESTS' : 'FULL';
+$split_guests = 1;
+if ($split_type === 'BY_GUESTS') {
+    $split_guests = isset($_POST['split_guests']) ? (int)$_POST['split_guests'] : 2;
+    if ($split_guests < 2) $split_guests = 2;
+    if ($split_guests > 20) $split_guests = 20;
+}
 
 // 테이블 번호(매장식사용)를 세션에서 가져와 게스트 이름에 태그로 포함
 $table_no = $_SESSION['table_no'] ?? null;
@@ -103,14 +119,45 @@ try {
         }
     }
 
-    $pay_amount = $total_amount - $effective_point;
+    // 1-2. 기프트카드 사용 검증 및 차감
+    $effective_gift = 0;
+    if ($use_gift_card > 0 && $gift_card_id > 0) {
+        $gift_stmt = $pdo->prepare("
+            SELECT id, balance, status, store_id, expires_at
+            FROM gift_cards
+            WHERE id = ? FOR UPDATE
+        ");
+        $gift_stmt->execute([$gift_card_id]);
+        $gift = $gift_stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$gift || $gift['status'] !== 'ACTIVE') {
+            throw new Exception('기프트카드를 사용할 수 없습니다.');
+        }
+        if ($gift['expires_at'] && $gift['expires_at'] < date('Y-m-d')) {
+            throw new Exception('만료된 기프트카드입니다.');
+        }
+        if ($gift['store_id'] !== null && (int)$gift['store_id'] !== (int)$store_id) {
+            throw new Exception('이 매장에서 사용할 수 없는 기프트카드입니다.');
+        }
+        $max_use = min((int)$gift['balance'], $total_amount - $effective_point, $use_gift_card);
+        if ($max_use <= 0) {
+            throw new Exception('기프트카드 잔액이 부족합니다.');
+        }
+        $effective_gift = $max_use;
+        $upd_gift = $pdo->prepare("UPDATE gift_cards SET balance = balance - ?, status = IF(balance - ? <= 0, 'USED', status), updated_at = NOW() WHERE id = ? AND balance >= ?");
+        $upd_gift->execute([$effective_gift, $effective_gift, $gift_card_id, $effective_gift]);
+        if ($upd_gift->rowCount() === 0) {
+            throw new Exception('기프트카드 차감에 실패했습니다.');
+        }
+    }
 
-    // 2. 주문 마스터 저장 (회원/비회원 정보, address, tel 포함)
+    $pay_amount = $total_amount - $effective_point - $effective_gift;
+
+    // 2. 주문 마스터 저장 (회원/비회원 정보, address, tel, payment_method, 기프트카드, 체크 분할 포함)
     $ins_order = $pdo->prepare("
-        INSERT INTO orders (user_id, store_id, order_type, total_amount, used_point, paid_amount, guest_name, guest_tel, address, tel, status) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+        INSERT INTO orders (user_id, store_id, order_type, total_amount, used_point, used_gift_card, gift_card_id, paid_amount, payment_method, split_type, split_guests, guest_name, guest_tel, address, tel, status) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
     ");
-    $ins_order->execute([$user_id, $store_id, $order_type, $total_amount, $effective_point, $pay_amount, $guest_name, $tel, $address, $tel]);
+    $ins_order->execute([$user_id, $store_id, $order_type, $total_amount, $effective_point, $effective_gift, $effective_gift > 0 ? $gift_card_id : null, $pay_amount, $payment_method, $split_type, $split_guests, $guest_name, $tel, $address, $tel]);
     $order_id = $pdo->lastInsertId();
 
     // 3. 상세 내역 저장 및 재고 차감
@@ -193,7 +240,12 @@ try {
             <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path></svg>
         </div>
         <h2 class="text-3xl font-black text-slate-800 tracking-tighter italic uppercase mb-2">Ordered!</h2>
-        <p class="text-slate-400 font-bold uppercase tracking-widest text-[10px] mb-8">주문번호 #<?php echo $order_id; ?></p>
+        <p class="text-slate-400 font-bold uppercase tracking-widest text-[10px] mb-2">주문번호 #<?php echo $order_id; ?></p>
+        <?php if (isset($split_type) && $split_type === 'BY_GUESTS' && $split_guests > 1): ?>
+        <p class="text-emerald-600 text-sm font-bold mb-8"><?php echo (int)$split_guests; ?>명 분할 · 1인당 <?php echo number_format(floor($total_amount / $split_guests)); ?>원</p>
+        <?php else: ?>
+        <div class="mb-8"></div>
+        <?php endif; ?>
         <div class="text-left space-y-2 mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-100">
             <p class="text-xs text-slate-500 font-bold uppercase">Delivery Address</p>
             <p class="text-sm font-black text-slate-800"><?php echo htmlspecialchars($address ?: '매장 식사/픽업'); ?></p>

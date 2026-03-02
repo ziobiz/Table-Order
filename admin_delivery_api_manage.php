@@ -7,6 +7,12 @@ if (($_SESSION['admin_role'] ?? '') !== 'SUPERADMIN') {
     header("Location: login.php");
     exit;
 }
+include 'common.php';
+$admin_id = (int)($_SESSION['admin_id'] ?? 0);
+$admin_username = $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+$admin_name = $_SESSION['admin_name'] ?? $admin_username;
+$admin_login_at = (int)($_SESSION['admin_login_at'] ?? time());
+$header_locale = 'ko';
 
 $countries = [
     'KR' => '한국', 'TH' => '태국', 'JP' => '일본',
@@ -39,10 +45,13 @@ if (isset($_POST['save_provider'])) {
             if ($id > 0) {
                 $stmt = $pdo->prepare("UPDATE delivery_api_providers SET name=?, name_local=?, country_code=?, api_base_url=?, auth_type=?, description=?, is_active=?, sort_order=? WHERE id=?");
                 $stmt->execute([$name, $name_local, $country_code, $api_base_url, $auth_type, $description, $is_active, $sort_order, $id]);
+                log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_delivery_api_manage', 'update', 'delivery_api', (string)$id, "Delivery API 수정: {$name} (ID {$id})");
                 echo "<script>alert('수정되었습니다.'); location.href='admin_delivery_api_manage.php';</script>";
             } else {
                 $stmt = $pdo->prepare("INSERT INTO delivery_api_providers (name, name_local, country_code, api_base_url, auth_type, description, is_active, sort_order) VALUES (?,?,?,?,?,?,?,?)");
                 $stmt->execute([$name, $name_local, $country_code, $api_base_url, $auth_type, $description, $is_active, $sort_order]);
+                $new_id = $pdo->lastInsertId();
+                log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_delivery_api_manage', 'create', 'delivery_api', (string)$new_id, "Delivery API 등록: {$name} (ID {$new_id})");
                 echo "<script>alert('등록되었습니다.'); location.href='admin_delivery_api_manage.php';</script>";
             }
             exit;
@@ -61,6 +70,7 @@ if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
     $pdo->prepare("DELETE FROM store_delivery_api_credentials WHERE provider_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM delivery_api_providers WHERE id = ?")->execute([$id]);
+    log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_delivery_api_manage', 'delete', 'delivery_api', (string)$id, "Delivery API 삭제: ID {$id}");
     header("Location: admin_delivery_api_manage.php");
     exit;
 }
@@ -85,26 +95,11 @@ if ($use_sidebar) {
     include 'admin_header.php';
 }
 ?>
-<?php if (!$use_sidebar): ?>
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Delivery API - Alrira</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap'); body { font-family: 'Pretendard', sans-serif; letter-spacing: -0.025em; }</style>
-</head>
-<body class="bg-slate-100 min-h-screen p-6 md:p-12">
-    <div class="max-w-[96rem] mx-auto space-y-10">
-        <header class="flex justify-between items-end">
-            <div>
-                <h1 class="text-4xl font-black italic text-slate-900 uppercase tracking-tighter">Delivery API</h1>
-                <p class="text-slate-500 text-xs font-bold mt-2 uppercase">계약된 배달앱 API 관리 · 가맹점은 키만 입력해 연동</p>
-            </div>
-            <button onclick="location.href='admin_dashboard.php'" class="bg-white border-2 border-slate-200 px-6 py-3 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all">Back to Dashboard</button>
-        </header>
-<?php endif; ?>
+<?php if (!$use_sidebar):
+    $admin_page_title = 'Delivery API';
+    $admin_page_subtitle = '계약된 배달앱 API 관리 · 가맹점은 키만 입력해 연동';
+    include 'admin_card_header.php';
+endif; ?>
 
         <div class="max-w-[96rem] space-y-10">
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -239,6 +234,5 @@ if ($use_sidebar) {
         document.getElementById('f_is_active').checked = (p.is_active == 1);
     }
     </script>
-</body>
-</html>
+<?php include 'admin_card_footer.php'; ?>
 <?php endif; ?>

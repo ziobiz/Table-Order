@@ -75,6 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $pdo->commit();
+        $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+        $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+        $action = $is_new ? 'create' : 'update';
+        $menu_name = $_POST['name_ko'] ?? '';
+        log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_menu_edit', $action, 'menu', (string)$menu_id, "메뉴 " . ($action === 'create' ? '등록' : '수정') . ": " . ($menu_name ?: "ID {$menu_id}"));
         $back = $format_id ? "admin_menu_by_format.php?format_id=$format_id" : 'admin_menu_list.php';
         echo "<script>alert('저장되었습니다.'); location.href='$back';</script>"; exit;
     } catch (Exception $e) { $pdo->rollBack(); die($e->getMessage()); }

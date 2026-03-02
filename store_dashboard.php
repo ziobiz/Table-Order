@@ -52,6 +52,12 @@ $header_locale = $_SESSION['store_locale'] ?? 'ko';
                 <p class="text-xs text-slate-400 mt-2">정산 신청 및 내역 확인</p>
             </a>
 
+            <a href="admin_store_stats.php" class="bg-white p-8 rounded-[2rem] shadow-lg border border-slate-100 hover:border-sky-500 transition-all group">
+                <div class="w-12 h-12 bg-sky-100 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">📈</div>
+                <h3 class="text-lg font-black text-slate-800">매장 통계</h3>
+                <p class="text-xs text-slate-400 mt-2">채널별·결제수단별·메뉴별 매출, 기간 필터</p>
+            </a>
+
             <a href="store_setting.php" class="bg-white p-8 rounded-[2rem] shadow-lg border border-slate-100 hover:border-violet-500 transition-all group">
                 <div class="w-12 h-12 bg-violet-100 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">⚙️</div>
                 <h3 class="text-lg font-black text-slate-800">KDS & 알림 설정</h3>
@@ -92,6 +98,12 @@ $header_locale = $_SESSION['store_locale'] ?? 'ko';
                 <div class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">📋</div>
                 <h3 class="text-lg font-black text-slate-800">로그 분석</h3>
                 <p class="text-xs text-slate-400 mt-2">가맹점 변경 이력 · 페이지별 구분 · 14일 보관</p>
+            </a>
+
+            <a href="admin_reservation_manage.php" class="bg-white p-8 rounded-[2rem] shadow-lg border border-slate-100 hover:border-emerald-500 transition-all group">
+                <div class="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">📅</div>
+                <h3 class="text-lg font-black text-slate-800">예약 관리</h3>
+                <p class="text-xs text-slate-400 mt-2">온라인 예약 확인 · 상태 변경</p>
             </a>
         </div>
     </div>

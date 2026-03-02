@@ -17,13 +17,29 @@ try {
     if ($chk2 && $chk2->rowCount() === 0) {
         $pdo->exec("ALTER TABLE stores ADD COLUMN kds_kitchen_theme VARCHAR(50) DEFAULT NULL");
     }
+    // KDS 모드 (A/B) 컬럼
+    $chk3 = $pdo->query("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stores' AND COLUMN_NAME = 'kds_mode'");
+    if ($chk3 && $chk3->rowCount() === 0) {
+        $pdo->exec("ALTER TABLE stores ADD COLUMN kds_mode VARCHAR(1) NOT NULL DEFAULT 'A' COMMENT 'KDS 모드 A/B'");
+    }
+    // 경과 시간 강조 사용 여부 플래그 (1일 때 강조 끄기)
+    $chk4 = $pdo->query("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stores' AND COLUMN_NAME = 'kds_disable_alerts'");
+    if ($chk4 && $chk4->rowCount() === 0) {
+        $pdo->exec("ALTER TABLE stores ADD COLUMN kds_disable_alerts TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1=경과 시간별 강조 사용 안 함'");
+    }
+    // 주문 히스토리 보관 시간 (시간 단위, 24/48/72)
+    $chk5 = $pdo->query("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stores' AND COLUMN_NAME = 'kds_history_hours'");
+    if ($chk5 && $chk5->rowCount() === 0) {
+        $pdo->exec("ALTER TABLE stores ADD COLUMN kds_history_hours TINYINT(3) NOT NULL DEFAULT 24 COMMENT 'KDS 히스토리 보관 시간 (24/48/72시간)'");
+    }
 } catch (Exception $e) { /* 컬럼 이미 있거나 권한 문제 시 무시 */ }
 
 // 현재 설정 로드
-$stmt = $pdo->prepare("SELECT store_name, kds_theme, kds_kitchen_theme, kds_alert_5, kds_alert_10, kds_alert_20, kds_alert_30, kds_sound, kds_sound_custom, use_local_status, kds_datetime_locale, kds_sync_order_status FROM stores WHERE id = ?");
+$stmt = $pdo->prepare("SELECT store_name, kds_theme, kds_kitchen_theme, kds_alert_5, kds_alert_10, kds_alert_20, kds_alert_30, kds_sound, kds_sound_custom, use_local_status, kds_datetime_locale, kds_sync_order_status, kds_mode, kds_disable_alerts, kds_history_hours FROM stores WHERE id = ?");
 $stmt->execute([$store_id]);
 $store = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!isset($store['kds_sync_order_status'])) $store['kds_sync_order_status'] = 1;
+if (empty($store['kds_mode'])) $store['kds_mode'] = 'A';
 if (!isset($store['kds_kitchen_theme']) || !$store['kds_kitchen_theme']) {
     // 키친 디스플레이 테마가 없으면 기존 kds_theme를 기본값으로 사용
     $store['kds_kitchen_theme'] = $store['kds_theme'] ?? 'sky';
@@ -65,6 +81,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sound_custom = $_POST['kds_sound_custom'] ?? $store['kds_sound_custom'];
     $use_local_status = isset($_POST['use_local_status']) ? (int)$_POST['use_local_status'] : 0;
     $kds_sync_order_status = isset($_POST['kds_sync_order_status']) ? (int)$_POST['kds_sync_order_status'] : 0;
+    $kds_mode = ($_POST['kds_mode'] ?? 'A') === 'B' ? 'B' : 'A';
+    $kds_disable_alerts = isset($_POST['kds_disable_alerts']) ? 1 : 0;
+    $kds_history_hours = (int)($_POST['kds_history_hours'] ?? 24);
+    if (!in_array($kds_history_hours, [24, 48, 72], true)) {
+        $kds_history_hours = 24;
+    }
 
     // 간단한 검증: 음수만 막고, 나머지는 자유롭게 (0이면 비활성)
     if ($alert5 < 0 || $alert10 < 0 || $alert20 < 0 || $alert30 < 0) {
@@ -72,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $up = $pdo->prepare("
             UPDATE stores
-            SET kds_theme = ?, kds_kitchen_theme = ?, kds_alert_5 = ?, kds_alert_10 = ?, kds_alert_20 = ?, kds_alert_30 = ?, kds_sound = ?, kds_sound_custom = ?, use_local_status = ?, kds_datetime_locale = ?, kds_sync_order_status = ?
+            SET kds_theme = ?, kds_kitchen_theme = ?, kds_alert_5 = ?, kds_alert_10 = ?, kds_alert_20 = ?, kds_alert_30 = ?, kds_sound = ?, kds_sound_custom = ?, use_local_status = ?, kds_datetime_locale = ?, kds_sync_order_status = ?, kds_mode = ?, kds_disable_alerts = ?, kds_history_hours = ?
             WHERE id = ?
         ");
         $up->execute([
@@ -87,6 +109,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $use_local_status,
             $_POST['kds_datetime_locale'] ?? 'ko',
             $kds_sync_order_status,
+            $kds_mode,
+            $kds_disable_alerts,
+            $kds_history_hours,
             $store_id
         ]);
 
@@ -113,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="max-w-[96rem] mx-auto">
         <header class="flex justify-between items-center mb-8">
             <div>
-                <h1 class="text-2xl font-black text-slate-900">KDS & 알림 설정</h1>
+                <h1 class="text-2xl font-black text-slate-900">디스플레이 설정</h1>
                 <p class="text-xs text-slate-500 font-bold mt-1"><?php echo htmlspecialchars($store['store_name']); ?> 가맹점</p>
             </div>
             <a href="store_dashboard.php" class="text-xs font-bold text-sky-500 hover:underline">← 대시보드로</a>
@@ -127,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <form method="post" class="bg-white rounded-[2rem] shadow-xl border border-slate-100 p-6 space-y-6">
             <section class="space-y-3">
-                <h2 class="text-sm font-black text-slate-700">주방 화면 테마</h2>
+                <h2 class="text-sm font-black text-slate-700">홀 디스플레이 테마 (Order tracket)</h2>
                 <div class="grid grid-cols-3 gap-3">
                     <?php foreach($themes as $key => $label): 
                         $checked = ($store['kds_theme'] ?? 'sky') === $key;
@@ -181,7 +206,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </section>
 
             <section class="space-y-3">
-                <h2 class="text-sm font-black text-slate-700">경과 시간별 강조 기준 (분)</h2>
+                <div class="flex items-center justify-between gap-4">
+                    <h2 class="text-sm font-black text-slate-700">경과 시간별 강조 기준 (분)</h2>
+                    <label class="flex items-center gap-2 text-[11px] text-slate-500 cursor-pointer">
+                        <input type="checkbox" name="kds_disable_alerts" value="1"
+                               <?php echo !empty($store['kds_disable_alerts']) ? 'checked' : ''; ?>
+                               class="rounded border-slate-300">
+                        <span>사용하지 않기</span>
+                    </label>
+                </div>
                 <div class="grid grid-cols-4 gap-3 text-center">
                     <div>
                         <input type="number" name="kds_alert_5"
@@ -205,6 +238,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
                 <p class="text-[10px] text-slate-400">분 단위 입력, 우선 시간 설정 값이 먼저 실행됩니다. 0으로 두면 해당 색은 사용하지 않습니다.</p>
+            </section>
+
+            <section class="space-y-3">
+                <h2 class="text-sm font-black text-slate-700">주문 히스토리 보관 시간</h2>
+                <p class="text-[10px] text-slate-400">KDS 오른쪽 "주문 히스토리(메뉴)" 패널에 완료된 메뉴가 몇 시간 동안 표시될지 설정합니다.</p>
+                <?php $histHours = (int)($store['kds_history_hours'] ?? 24); if (!in_array($histHours, [24,48,72], true)) { $histHours = 24; } ?>
+                <div class="flex flex-wrap gap-3 text-xs">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="kds_history_hours" value="24" <?php echo $histHours === 24 ? 'checked' : ''; ?>>
+                        <span class="text-slate-700">24시간</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="kds_history_hours" value="48" <?php echo $histHours === 48 ? 'checked' : ''; ?>>
+                        <span class="text-slate-700">48시간</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="kds_history_hours" value="72" <?php echo $histHours === 72 ? 'checked' : ''; ?>>
+                        <span class="text-slate-700">72시간</span>
+                    </label>
+                </div>
+                <p class="text-[10px] text-slate-400">기본은 24시간입니다. 설정한 시간보다 오래된 완료 메뉴는 자동으로 히스토리에서 숨겨집니다.</p>
             </section>
 
             <section class="space-y-3">
@@ -246,6 +300,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="radio" name="kds_sync_order_status" value="0" <?php echo (int)($store['kds_sync_order_status'] ?? 1) === 0 ? 'checked' : ''; ?> class="rounded-full">
                         <span class="text-sm font-bold text-slate-700">연동 안 함</span>
+                    </label>
+                </div>
+            </section>
+
+            <section class="space-y-3">
+                <h2 class="text-sm font-black text-slate-700">KDS 모드 (주방/홀 역할 분리)</h2>
+                <p class="text-[10px] text-slate-400">
+                    A형: 주방에서 메뉴를 단계별로 클릭(OK→조리완료), B형: 주방은 OK(조리 시작)만, 조리완료/서빙완료는 홀에서 ORDER TRACKET에서 처리합니다.
+                </p>
+                <div class="flex flex-col gap-2 text-xs">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="kds_mode" value="A" <?php echo ($store['kds_mode'] ?? 'A') === 'A' ? 'checked' : ''; ?>>
+                        <span class="text-slate-700">A형 · 주방에서 OK / 조리완료까지 모두 처리</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="kds_mode" value="B" <?php echo ($store['kds_mode'] ?? 'A') === 'B' ? 'checked' : ''; ?>>
+                        <span class="text-slate-700">B형 · 주방은 OK(조리 시작)만, 조리완료/서빙완료는 홀에서</span>
                     </label>
                 </div>
             </section>

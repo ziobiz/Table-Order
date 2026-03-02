@@ -66,7 +66,8 @@ try {
     $categories = $cat_stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // 4. 메뉴 로드 (본사 포맷 기준) + 가맹점 오버라이드 반영
-    $sql = "SELECT m.*, t.menu_name, t.description 
+    $sql = "SELECT m.*, t.menu_name, t.description,
+                   EXISTS(SELECT 1 FROM menu_option_groups mog WHERE mog.menu_id = m.id) AS has_options
             FROM menus m 
             LEFT JOIN menu_translations t ON m.id = t.menu_id AND t.lang_code = :lang
             WHERE m.menu_format_id = :menu_format_id AND m.is_{$order_type} = 1
@@ -74,7 +75,12 @@ try {
     try {
         $pdo->query("SELECT menu_format_id FROM menus LIMIT 1");
     } catch (PDOException $e) {
-        $sql = "SELECT m.*, t.menu_name, t.description FROM menus m LEFT JOIN menu_translations t ON m.id = t.menu_id AND t.lang_code = :lang WHERE m.store_id = :store_id AND m.is_available = 1 AND m.is_{$order_type} = 1 ORDER BY m.id DESC";
+        $sql = "SELECT m.*, t.menu_name, t.description,
+                       EXISTS(SELECT 1 FROM menu_option_groups mog WHERE mog.menu_id = m.id) AS has_options
+                FROM menus m 
+                LEFT JOIN menu_translations t ON m.id = t.menu_id AND t.lang_code = :lang 
+                WHERE m.store_id = :store_id AND m.is_available = 1 AND m.is_{$order_type} = 1 
+                ORDER BY m.id DESC";
     }
     $stmt = $pdo->prepare($sql);
     $params = ['lang' => $lang];
@@ -198,8 +204,8 @@ if (isset($_SESSION['cart']) && is_array($_SESSION['cart']) && !empty($_SESSION[
 
 // 6. 공통 UI 텍스트 다국어 설정 (인도네시아어 추가)
 $ui_text = [
-    // 하단 장바구니 버튼: 한국어는 '주문완료 하기'로 직관적으로 표기
-    'ko' => ['all' => '전체', 'order_list' => '주문완료 하기', 'sold_out' => '품절', 'none' => '상품이 없습니다.'],
+    // 하단 장바구니 버튼: 한국어는 '주문완료하기'로 직관적으로 표기
+    'ko' => ['all' => '전체', 'order_list' => '주문완료하기', 'sold_out' => '품절', 'none' => '상품이 없습니다.'],
     'en' => ['all' => 'ALL', 'order_list' => 'ORDER LIST', 'sold_out' => 'SOLD OUT', 'none' => 'No items available.'],
     'th' => ['all' => 'ทั้งหมด', 'order_list' => 'รายการ 주문', 'sold_out' => '품절', 'none' => 'ไม่มีสินค้า'],
     'ja' => ['all' => 'すべて', 'order_list' => '注文履歴', 'sold_out' => '売り切れ', 'none' => '商品がありません'],
@@ -293,14 +299,32 @@ $cur_ui = $ui_text[$lang] ?? $ui_text['ko'];
                     <p class="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
                         <?php echo htmlspecialchars($m['description'] ?? ''); ?>
                     </p>
+                    <?php if (!empty($m['has_options'])): ?>
+                    <p class="text-[10px] text-rose-500 font-bold mt-1">세부오더를 진행해야 합니다</p>
+                    <?php endif; ?>
                 </div>
                 <div class="flex justify-between items-end">
                     <span class="text-sky-600 font-black text-lg italic tracking-tighter">
                         <?php echo number_format($m[$price_col] ?? 0); ?><span class="text-[10px] not-italic ml-0.5">원</span>
                     </span>
-                    <div class="w-9 h-9 bg-sky-200 rounded-2xl flex items-center justify-center">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
+                    <?php if (!$is_sold_out && empty($m['has_options'])): ?>
+                    <div class="flex items-center gap-2" onclick="event.stopPropagation();">
+                        <div class="inline-flex items-center bg-sky-50 border border-sky-100 rounded-2xl px-1 py-0.5">
+                            <button type="button"
+                                    class="w-7 h-7 flex items-center justify-center rounded-xl text-slate-500 hover:bg-sky-100 font-bold text-sm menu-qty-minus"
+                                    data-menu-id="<?php echo (int)$m['id']; ?>">−</button>
+                            <span id="menu-qty-display-<?php echo (int)$m['id']; ?>" class="w-7 text-center font-black text-slate-800 text-xs">1</span>
+                            <button type="button"
+                                    class="w-7 h-7 flex items-center justify-center rounded-xl text-slate-600 hover:bg-sky-100 font-bold text-sm menu-qty-plus"
+                                    data-menu-id="<?php echo (int)$m['id']; ?>">+</button>
+                        </div>
+                        <button type="button"
+                                class="px-3 py-1 bg-sky-300 text-slate-800 rounded-xl text-[10px] font-black uppercase tracking-tight border border-sky-200 hover:bg-sky-400 transition"
+                                onclick="event.stopPropagation(); addMenuToCart(<?php echo (int)$m['id']; ?>);">
+                            담기
+                        </button>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -360,16 +384,76 @@ $cur_ui = $ui_text[$lang] ?? $ui_text['ko'];
         <button onclick="location.href='order_review.php'" class="pointer-events-auto w-full max-w-md mx-auto bg-sky-300 text-slate-800 h-20 rounded-[2.5rem] shadow-lg border border-sky-200 flex items-center justify-between px-8 transform active:scale-95 transition-all">
             <div class="flex items-center space-x-4">
                 <div class="relative">
-                    <svg class="w-6 h-6 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                    <span class="absolute -top-2 -right-2 bg-white text-sky-600 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-sky-300">
+                    <span class="text-2xl">🛒</span>
+                    <span id="cart-count-display" class="absolute -top-2 -right-2 bg-white text-sky-600 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-sky-300">
                         <?php echo (int)$cart_count; ?>
                     </span>
                 </div>
-                <span class="font-black tracking-widest text-xs uppercase"><?php echo $cur_ui['order_list']; ?></span>
+                <div class="flex flex-col space-y-1">
+                    <span class="text-[11px] font-bold text-slate-700">장바구니</span>
+                    <span class="font-black text-sm text-slate-800">주문완료하기</span>
+                </div>
             </div>
-            <span class="text-slate-800 font-black text-xl italic tracking-tighter"><?php echo number_format($cart_total); ?>원</span>
+            <span id="cart-total-display" class="text-slate-800 font-black text-xl italic tracking-tighter"><?php echo number_format($cart_total); ?>원</span>
         </button>
     </div>
+
+    <script>
+    (function() {
+        function getMenuQty(id) {
+            var el = document.getElementById('menu-qty-display-' + id);
+            if (!el) return 1;
+            var v = parseInt(el.textContent || el.innerText || '1', 10);
+            if (isNaN(v) || v < 1) v = 1;
+            return v;
+        }
+        function setMenuQty(id, n) {
+            if (n < 1) n = 1;
+            var el = document.getElementById('menu-qty-display-' + id);
+            if (el) el.textContent = String(n);
+        }
+
+        document.querySelectorAll('.menu-qty-plus').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var id = this.getAttribute('data-menu-id');
+                setMenuQty(id, getMenuQty(id) + 1);
+            });
+        });
+        document.querySelectorAll('.menu-qty-minus').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var id = this.getAttribute('data-menu-id');
+                setMenuQty(id, getMenuQty(id) - 1);
+            });
+        });
+
+        window.addMenuToCart = function(menuId) {
+            var qty = getMenuQty(menuId);
+            if (qty < 1) qty = 1;
+            var fd = new FormData();
+            fd.append('menu_id', String(menuId));
+            fd.append('order_type', '<?php echo $order_type; ?>');
+            fd.append('quantity', String(qty));
+            fd.append('lang', '<?php echo $lang; ?>');
+
+            fetch('cart_process.php', { method: 'POST', body: fd })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data && data.status === 'success') {
+                        alert('장바구니에 담겼습니다.');
+                        // 주문 내역(장바구니 리스트)을 서버 렌더링으로 바로 반영하기 위해 페이지 새로고침
+                        location.reload();
+                    } else {
+                        alert('장바구니 담기 중 오류가 발생했습니다.');
+                    }
+                })
+                .catch(function() {
+                    alert('장바구니 담기 중 오류가 발생했습니다.');
+                });
+        };
+    })();
+    </script>
 
 </body>
 </html>

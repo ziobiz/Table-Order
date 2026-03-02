@@ -21,6 +21,10 @@ if (isset($_POST['add_store'])) {
     try {
         $stmt = $pdo->prepare("INSERT INTO stores (store_name, address, tel, point_rate, point_policy) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$name, $address, $tel, $p_rate, $p_policy]);
+        $new_id = $pdo->lastInsertId();
+        $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+        $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+        log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_store_manage2', 'create', 'store', (string)$new_id, "가맹점 등록: {$name} (ID {$new_id})");
         echo "<script>alert('신규 가맹점이 등록되었습니다.'); location.href='admin_store_manage.php';</script>";
         exit;
     } catch (PDOException $e) {
@@ -31,8 +35,11 @@ if (isset($_POST['add_store'])) {
 
 // 2. 가맹점 삭제 처리
 if (isset($_GET['delete'])) {
-    $id = $_GET['delete'];
+    $id = (int)$_GET['delete'];
     $pdo->prepare("DELETE FROM stores WHERE id = ?")->execute([$id]);
+    $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+    $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+    log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_store_manage2', 'delete', 'store', (string)$id, "가맹점 삭제: ID {$id}");
     echo "<script>alert('삭제되었습니다.'); location.href='admin_store_manage.php';</script>";
     exit;
 }

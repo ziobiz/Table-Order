@@ -1,8 +1,10 @@
 <?php
 // admin_store_info.php - 매장 정보 및 정책 설정
+if (session_status() == PHP_SESSION_NONE) { session_start(); }
 include 'db_config.php';
+include 'common.php';
 
-$store_id = 1; // 세션에서 가져온 현재 매장 ID
+$store_id = (int)($_SESSION['store_id'] ?? 1);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("UPDATE stores SET address=?, tel=?, use_review=?, point_policy=?, point_rate=?, point_payer=? WHERE id=?");
@@ -10,6 +12,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_POST['address'], $_POST['tel'], $_POST['use_review'], 
         $_POST['point_policy'], $_POST['point_rate'], $_POST['point_payer'], $store_id
     ]);
+    $admin_id = (int)($_SESSION['admin_id'] ?? $_SESSION['store_id'] ?? 0);
+    $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? $_SESSION['name'] ?? ('id_' . $admin_id);
+    log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_store_info', 'update', 'store', (string)$store_id, "매장 설정 변경: ID {$store_id}");
     echo "<script>alert('설정이 저장되었습니다.'); location.reload();</script>";
 }
 

@@ -5,8 +5,9 @@ alwaysApply: true
 
 # Table Order / POS 개발 방향
 
-## 기능 범위
-- **참조**: 레스토랑 POS 블루프린트(제안서)의 주요 기능을 참고하되, **1번(규정 준수·보안)** 은 제외. 나머지(고객/로열티, 직원, 재고, 결제, 리포팅, 마케팅, 매장관리, 연동, 모바일 등)는 같은 형태로 유지·발전.
+## 기능 범위 (필수 참조)
+- **ETS PDF**: `D:\Delopment\Table Order\ets\Building_the_Ultimate_Restaurant_POS_Blueprint.pdf` 에 소개된 기능은 **반드시 개발에 포함**한다. PDF가 이미지 기반이면 `docs/블루프린트_기능_비교_및_개발방향.md` 를 대체 참조.
+- **블루프린트**: 레스토랑 POS 블루프린트(제안서)의 주요 기능을 참고하되, **1번(규정 준수·보안)** 은 제외. 나머지(고객/로열티, 직원, 재고, 결제, 리포팅, 마케팅, 매장관리, 연동, 모바일 등)는 같은 형태로 유지·발전.
 - **기존 기능**: QR·테이블 주문, 다국어 메뉴, KDS, 포인트/쿠폰, 가맹점 POS, 본사/가맹점 관리 등은 그대로 유지.
 - **새 기능**: 블루프린트의 핵심만 참조해 동일한 “형태”로 구현. 완전 동일 복제가 아님.
 
@@ -24,11 +25,27 @@ alwaysApply: true
 - 강조: `text-sky-500`, `bg-sky-100`, `border-sky-200`, `bg-rose-100`, `text-rose-600` 등
 - 그림자: `shadow-sm`, `shadow-lg` 정도. `shadow-2xl`은 최소 사용.
 
+## 기준 색상 (보조 버튼·링크 — order_review "추가 주문하기" 기준)
+- **배경**: `bg-sky-100`
+- **텍스트**: `text-sky-700`
+- **호버**: `hover:bg-sky-200`
+- **테두리**: `border border-sky-200`
+- 이 조합을 **보조 버튼·보조 링크**의 기준으로 사용. 유사한 스타일 필요 시 이 톤을 따름.
+
 ## 금지·자제
 - 1번(2FA, PCI DSS, GDPR, SOC, SSO 등 규정 준수·보안) 기능 추가 요구 시 제외하고 진행.
 - UI에 네온·과한 그라데이션·다크 모드 전면 적용 없이, 기존 밝은 파스탈 톤 유지.
 
 ---
+
+## 본사(HQ) 페이지 UI 통일 (타블렛/카드 모드)
+- **기준**: `admin_store_applications.php` (가맹점 신청 승인) 레이아웃을 모든 본사 메뉴의 표준으로 사용.
+- **body**: `bg-slate-100 min-h-screen p-6 md:p-12`
+- **컨테이너**: `max-w-[96rem] mx-auto space-y-10`
+- **헤더**: `flex flex-wrap items-center justify-between` — 왼쪽: h1 `text-2xl font-black italic text-slate-900 uppercase`, subtitle `text-xs text-slate-400 font-bold` / 오른쪽: 접속자, 현재시각, 머문시간, "Back to Dashboard" 버튼, Logout
+- **카드/패널**: `bg-white rounded-[2rem] shadow-lg border border-slate-100 overflow-hidden`
+- **폰트**: `font-family: 'Pretendard'`, `letter-spacing: -0.025em`
+- 사이드바 모드(`$use_sidebar`)일 때는 `admin_header.php` 사용. 카드 모드일 때만 위 레이아웃 적용.
 
 ## 개발 원칙 (식당용 다기능 POS)
 1. **기존 테이블·코드 삭제 금지**: 기존 테이블 구조나 코드를 함부로 삭제하지 않고, **확장**을 우선한다.

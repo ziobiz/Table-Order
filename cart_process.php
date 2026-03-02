@@ -48,7 +48,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'order_type' => $order_type
         ];
     }
-    
-    echo json_encode(['status' => 'success', 'cart_count' => count($_SESSION['cart'])]);
+
+    // 장바구니 합계/수량 재계산 (menu.php 와 동일한 로직 요약)
+    $lang = $_POST['lang'] ?? 'ko';
+    $cart_count = 0;
+    $cart_total = 0;
+    if (!empty($_SESSION['cart']) && is_array($_SESSION['cart'])) {
+        foreach ($_SESSION['cart'] as $line) {
+            $qty = (int)($line['quantity'] ?? 0);
+            if ($qty <= 0) continue;
+            $menu_id_in_cart = (int)($line['menu_id'] ?? 0);
+            if ($menu_id_in_cart <= 0) continue;
+
+            $ot = $line['order_type'] ?? $order_type;
+            $pcol = 'price';
+            if ($ot === 'pickup')   $pcol = 'price_pickup';
+            if ($ot === 'delivery') $pcol = 'price_delivery';
+
+            $base_price = 0;
+            try {
+                $pstmt = $pdo->prepare("SELECT m.{$pcol} FROM menus m WHERE m.id = ?");
+                $pstmt->execute([$menu_id_in_cart]);
+                $row = $pstmt->fetch(PDO::FETCH_ASSOC);
+                if ($row) {
+                    $base_price = (int)$row[$pcol];
+                }
+            } catch (Exception $e) {}
+
+            $opt_sum = 0;
+            if (!empty($line['options']) && is_array($line['options'])) {
+                foreach ($line['options'] as $oid => $oval) {
+                    $unit_price = 0;
+                    $opt_qty = 1;
+                    if (is_array($oval)) {
+                        $unit_price = (int)($oval['price'] ?? 0);
+                        $opt_qty = (int)($oval['qty'] ?? 1);
+                        if ($opt_qty < 1) { $opt_qty = 1; }
+                    } else {
+                        $unit_price = (int)$oval;
+                    }
+                    $opt_sum += $unit_price * $opt_qty;
+                }
+            }
+
+            $line_total = ($base_price + $opt_sum) * $qty;
+            $cart_count += $qty;
+            $cart_total += $line_total;
+        }
+    }
+
+    echo json_encode([
+        'status' => 'success',
+        'cart_count' => $cart_count,
+        'cart_total' => $cart_total
+    ]);
     exit;
 }

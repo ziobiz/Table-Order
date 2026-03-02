@@ -5,8 +5,11 @@ if (($_SESSION['admin_role'] ?? '') !== 'SUPERADMIN') { header("Location: login.
 include 'db_config.php';
 include 'common.php';
 
-$admin_name = $_SESSION['admin_name'] ?? 'Admin';
-$login_at = (int)($_SESSION['admin_login_at'] ?? time());
+$admin_id = (int)($_SESSION['admin_id'] ?? 0);
+$admin_username = $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+$admin_name = $_SESSION['admin_name'] ?? $admin_username;
+$admin_login_at = (int)($_SESSION['admin_login_at'] ?? time());
+$header_locale = 'ko';
 
 $riders = [];
 try {
@@ -21,26 +24,11 @@ if ($use_sidebar) {
     include 'admin_header.php';
 }
 ?>
-<?php if (!$use_sidebar): ?>
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>본사 Rider 관리 - Alrira</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap'); body { font-family: 'Pretendard'; }</style>
-</head>
-<body class="bg-slate-50 min-h-screen p-8">
-    <div class="max-w-[96rem] mx-auto">
-        <header class="flex flex-wrap items-center justify-between gap-3 mb-8">
-            <div>
-                <h1 class="text-2xl font-black italic text-slate-900 uppercase">본사 Rider 관리</h1>
-                <p class="text-xs text-slate-500 mt-1">배민 구조 · 본사 소속 Rider (대기 콜 수락)</p>
-            </div>
-            <a href="admin_dashboard.php" class="bg-slate-200 text-slate-700 px-5 py-2.5 rounded-2xl text-xs font-black uppercase hover:bg-slate-300">Back to Dashboard</a>
-        </header>
-<?php endif; ?>
+<?php if (!$use_sidebar):
+    $admin_page_title = '본사 Rider 관리';
+    $admin_page_subtitle = '배민 구조 · 본사 소속 Rider (대기 콜 수락)';
+    include 'admin_card_header.php';
+endif; ?>
 
         <div class="max-w-[96rem]">
         <div class="bg-white rounded-[2rem] shadow-lg border border-slate-100 overflow-hidden">
@@ -68,7 +56,5 @@ if ($use_sidebar) {
 <?php if ($use_sidebar): ?>
 <?php include 'admin_footer.php'; ?>
 <?php else: ?>
-    </div>
-</body>
-</html>
+<?php include 'admin_card_footer.php'; ?>
 <?php endif; ?>

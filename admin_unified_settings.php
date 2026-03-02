@@ -6,8 +6,10 @@ include 'db_config.php';
 include 'common.php';
 
 $admin_id = (int)($_SESSION['admin_id'] ?? 0);
-$admin_username = $_SESSION['admin_username'] ?? '';
+$admin_username = $_SESSION['admin_username'] ?? ('id_' . $admin_id);
 $admin_name = $_SESSION['admin_name'] ?? $admin_username;
+$admin_login_at = (int)($_SESSION['admin_login_at'] ?? time());
+$header_locale = 'ko';
 
 $saved = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -20,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute(['activity_log_admin_retention_days', (string)$admin_days]);
         $stmt->execute(['activity_log_store_retention_days', (string)$store_days]);
         $saved = true;
+        log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_unified_settings', 'update', 'settings', null, "통합설정 변경: 본사 로그 {$admin_days}일, 가맹점 로그 {$store_days}일");
     } catch (Exception $e) {}
 }
 
@@ -35,33 +38,18 @@ if ($use_sidebar) {
     include 'admin_header.php';
 }
 ?>
-<?php if (!$use_sidebar): ?>
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>통합설정 - 본사 - Alrira</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap'); body { font-family: 'Pretendard'; }</style>
-</head>
-<body class="bg-slate-100 min-h-screen p-6 md:p-12">
-    <div class="max-w-[96rem] mx-auto space-y-6">
-        <header class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-                <h1 class="text-2xl font-black italic text-slate-900 uppercase">통합설정</h1>
-                <p class="text-xs text-slate-500 mt-1">본사에서 지정한 값이 전체에 일괄 적용됩니다. 가맹점별 설정이 아닙니다.</p>
-            </div>
-            <a href="admin_dashboard.php" class="bg-white border-2 border-slate-200 px-5 py-2.5 rounded-2xl text-xs font-black uppercase hover:bg-slate-50">대시보드</a>
-        </header>
-<?php endif; ?>
+<?php if (!$use_sidebar):
+    $admin_page_title = '통합설정';
+    $admin_page_subtitle = '본사에서 지정한 값이 전체에 일괄 적용됩니다. 가맹점별 설정이 아닙니다.';
+    include 'admin_card_header.php';
+endif; ?>
 
         <div class="max-w-[96rem] space-y-6">
         <?php if ($saved): ?>
         <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-sm font-bold">설정이 저장되었습니다. 본사·가맹점 로그 보관 기간이 일괄 적용됩니다.</div>
         <?php endif; ?>
 
-        <form method="POST" class="bg-white rounded-2xl border border-slate-100 p-6 md:p-8 space-y-6">
+        <form method="POST" class="bg-white rounded-[2rem] shadow-lg border border-slate-100 p-6 md:p-8 space-y-6">
             <section>
                 <h2 class="text-sm font-black text-slate-800 uppercase mb-4">로그 분석(변경 이력) 보관 기간</h2>
                 <p class="text-xs text-slate-500 mb-4">해당 일수 초과 로그는 자동 삭제됩니다. 본사용·가맹점용 각 1개 값만 사용하며, 모든 본사/모든 가맹점에 동일하게 적용됩니다.</p>
@@ -86,7 +74,5 @@ if ($use_sidebar) {
 <?php if ($use_sidebar): ?>
 <?php include 'admin_footer.php'; ?>
 <?php else: ?>
-    </div>
-</body>
-</html>
+<?php include 'admin_card_footer.php'; ?>
 <?php endif; ?>

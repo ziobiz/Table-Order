@@ -6,6 +6,7 @@ include 'db_config.php';
 if (($_SESSION['admin_role'] ?? '') !== 'SUPERADMIN') {
     echo "<script>alert('본사 관리자 전용입니다.'); location.href='login.php';</script>"; exit;
 }
+include 'common.php';
 
 $format_id = (int)($_GET['format_id'] ?? 0);
 $id = (int)($_GET['id'] ?? 0);
@@ -43,6 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id > 0) {
                 $pdo->prepare("UPDATE categories SET category_name=?, sort_order=? WHERE id=? AND menu_format_id=?")
                     ->execute([$name, $sort_order, $id, $format_id]);
+                $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+                $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+                log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_category_edit', 'update', 'category', (string)$id, "카테고리 수정: {$name} (포맷 ID {$format_id})");
                 echo "<script>alert('수정되었습니다.'); location.href='admin_menu_by_format.php?format_id=$format_id';</script>"; exit;
             } else {
                 $pdo->prepare("INSERT INTO categories (menu_format_id, category_name, sort_order) VALUES (?,?,?)")
@@ -50,6 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $new_id = $pdo->lastInsertId();
                 $pdo->prepare("INSERT INTO category_translations (category_id, lang_code, category_name) VALUES (?, 'ko', ?)")
                     ->execute([$new_id, $name]);
+                $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+                $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+                log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_category_edit', 'create', 'category', (string)$new_id, "카테고리 등록: {$name} (포맷 ID {$format_id})");
                 echo "<script>alert('추가되었습니다.'); location.href='admin_menu_by_format.php?format_id=$format_id';</script>"; exit;
             }
         } catch (PDOException $e) {
@@ -58,6 +65,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $new_id = $pdo->lastInsertId();
                 $pdo->prepare("INSERT INTO category_translations (category_id, lang_code, category_name) VALUES (?, 'ko', ?)")->execute([$new_id, $name]);
                 $pdo->prepare("UPDATE categories SET menu_format_id=? WHERE id=?")->execute([$format_id, $new_id]);
+                $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+                $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+                log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_category_edit', 'create', 'category', (string)$new_id, "카테고리 등록: {$name} (포맷 ID {$format_id})");
                 echo "<script>alert('추가되었습니다.'); location.href='admin_menu_by_format.php?format_id=$format_id';</script>"; exit;
             }
             echo "<script>alert('저장 실패: " . addslashes($e->getMessage()) . "');</script>";

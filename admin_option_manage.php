@@ -13,6 +13,9 @@ if (!in_array($admin_role, ['SUPERADMIN', 'MANAGER'])) {
 if (isset($_POST['add_group'])) {
     $stmt = $pdo->prepare("INSERT INTO option_groups (group_name_ko, is_required, min_select, max_select) VALUES (?, ?, ?, ?)");
     $stmt->execute([$_POST['group_name'], $_POST['is_required'] ?? 0, $_POST['min_select'], $_POST['max_select']]);
+    $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+    $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+    log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_option_manage', 'create', 'option_group', (string)$pdo->lastInsertId(), "옵션 그룹 등록: " . ($_POST['group_name'] ?? ''));
     header("Location: admin_option_manage.php"); exit;
 }
 
@@ -20,6 +23,9 @@ if (isset($_POST['add_group'])) {
 if (isset($_POST['add_item'])) {
     $stmt = $pdo->prepare("INSERT INTO option_items (group_id, item_name_ko, price_dinein, price_pickup, price_delivery) VALUES (?, ?, ?, ?, ?)");
     $stmt->execute([$_POST['group_id'], $_POST['item_name'], floor($_POST['p_d']), floor($_POST['p_p']), floor($_POST['p_v'])]);
+    $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+    $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+    log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_option_manage', 'create', 'option_item', (string)$pdo->lastInsertId(), "옵션 항목 등록: " . ($_POST['item_name'] ?? '') . " (그룹 " . ($_POST['group_id'] ?? '') . ")");
     header("Location: admin_option_manage.php"); exit;
 }
 

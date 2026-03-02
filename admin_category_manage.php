@@ -29,6 +29,9 @@ if (isset($_POST['add_category'])) {
                 ->execute([$new_id, $code, $name]);
         }
         $pdo->commit();
+        $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+        $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+        log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_category_manage', 'create', 'category', (string)$new_id, "카테고리 등록: " . ($_POST['name_ko'] ?? ''));
         echo "<script>alert('새 카테고리가 등록되었습니다.'); location.href='admin_category_manage.php';</script>"; exit;
     } catch (Exception $e) { $pdo->rollBack(); die($e->getMessage()); }
 }
@@ -47,6 +50,9 @@ if (isset($_POST['update_category'])) {
                 ->execute([$cat_id, $code, $name, $name]);
         }
         $pdo->commit();
+        $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+        $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+        log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_category_manage', 'update', 'category', (string)$cat_id, "카테고리 수정: ID {$cat_id}");
         echo "<script>alert('수정되었습니다.'); location.href='admin_category_manage.php';</script>"; exit;
     } catch (Exception $e) { $pdo->rollBack(); die($e->getMessage()); }
 }

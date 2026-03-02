@@ -8,8 +8,9 @@ include 'common.php';
 $admin_id = (int)($_SESSION['admin_id'] ?? 0);
 $admin_username = $_SESSION['admin_username'] ?? '';
 $admin_name = $_SESSION['admin_name'] ?? $admin_username;
-$login_at = (int)($_SESSION['admin_login_at'] ?? time());
+$admin_login_at = (int)($_SESSION['admin_login_at'] ?? time());
 $header_locale = 'ko';
+$admin_username = $_SESSION['admin_username'] ?? ('id_' . ((int)($_SESSION['admin_id'] ?? 0)));
 
 $admin_retention_days = get_activity_log_retention_days($pdo, 'admin');
 // 설정된 일수 초과 본사 로그 자동 삭제 (통합설정 · 일괄 적용)
@@ -65,28 +66,13 @@ if ($use_sidebar) {
     include 'admin_header.php';
 }
 ?>
-<?php if (!$use_sidebar): ?>
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>로그 분석 - 본사 - Alrira</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap'); body { font-family: 'Pretendard'; }</style>
-</head>
-<body class="bg-slate-100 min-h-screen p-6 md:p-12">
-    <div class="max-w-[96rem] mx-auto space-y-6">
-        <header class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-                <h1 class="text-2xl font-black italic text-slate-900 uppercase">로그 분석</h1>
-                <p class="text-xs text-slate-500 mt-1">본사 변경 이력 · <?php echo (int)$admin_retention_days; ?>일 보관 후 자동 삭제 (통합설정)</p>
-            </div>
-            <a href="admin_dashboard.php" class="bg-white border-2 border-slate-200 px-5 py-2.5 rounded-2xl text-xs font-black uppercase hover:bg-slate-50">Back to Dashboard</a>
-        </header>
-<?php endif; ?>
+<?php if (!$use_sidebar):
+    $admin_page_title = '로그 분석';
+    $admin_page_subtitle = '본사 변경 이력 · ' . (int)$admin_retention_days . '일 보관 후 자동 삭제 (통합설정)';
+    include 'admin_card_header.php';
+endif; ?>
 
-        <div class="max-w-[96rem] space-y-6">
+        <div class="max-w-[96rem] space-y-10">
         <form method="GET" class="bg-white rounded-2xl border border-slate-100 p-4 flex flex-wrap items-end gap-3">
             <div>
                 <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">페이지</label>
@@ -148,6 +134,5 @@ if ($use_sidebar) {
 <?php if ($use_sidebar): ?>
 <?php include 'admin_footer.php'; ?>
 <?php else: ?>
-</body>
-</html>
+<?php include 'admin_card_footer.php'; ?>
 <?php endif; ?>

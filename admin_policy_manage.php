@@ -63,6 +63,11 @@ if (isset($_POST['save_policy'])) {
         }
         
         $pdo->commit();
+        $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+        $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+        $action = !empty($_POST['policy_id']) ? 'update' : 'create';
+        $policy_id = $_POST['policy_id'] ?? $pdo->lastInsertId();
+        log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_policy_manage', $action, 'policy', (string)$policy_id, "정책 " . ($action === 'create' ? '등록' : '수정') . ": " . ($_POST['policy_name'] ?? ''));
         echo "<script>alert('정책이 저장되었습니다.'); location.href='admin_policy_manage.php';</script>"; exit;
     } catch (Exception $e) { 
         if($pdo->inTransaction()) $pdo->rollBack();
@@ -72,7 +77,11 @@ if (isset($_POST['save_policy'])) {
 
 // 삭제
 if (isset($_GET['delete'])) {
-    $pdo->prepare("DELETE FROM policy_templates WHERE id = ?")->execute([$_GET['delete']]);
+    $del_id = (int)$_GET['delete'];
+    $pdo->prepare("DELETE FROM policy_templates WHERE id = ?")->execute([$del_id]);
+    $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+    $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+    log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_policy_manage', 'delete', 'policy', (string)$del_id, "정책 삭제: ID {$del_id}");
     header("Location: admin_policy_manage.php"); exit;
 }
 
@@ -81,6 +90,11 @@ try {
     $policies = $pdo->query("SELECT * FROM policy_templates ORDER BY is_default DESC, id DESC")->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $policies = []; }
 
+$admin_id = (int)($_SESSION['admin_id'] ?? 0);
+$admin_username = $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+$admin_name = $_SESSION['admin_name'] ?? $admin_username;
+$admin_login_at = (int)($_SESSION['admin_login_at'] ?? time());
+$header_locale = 'ko';
 $use_sidebar = (($_SESSION['admin_layout'] ?? '') === 'sidebar');
 if ($use_sidebar) {
     $admin_page_title = 'Policy Master';
@@ -109,13 +123,17 @@ if ($use_sidebar) {
 </head>
 <body class="bg-slate-100 min-h-screen p-6 md:p-12">
     <div class="max-w-[96rem] mx-auto space-y-10">
-        <header class="flex justify-between items-end">
-            <div>
-                <h1 class="text-4xl font-black italic text-violet-900 uppercase tracking-tighter">Policy Master</h1>
-                <p class="text-slate-500 text-xs font-bold mt-2 uppercase">가맹점 6대 정책 템플릿 관리</p>
+        <header class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2 shrink-0">
+                <h1 class="text-2xl font-black italic text-slate-900 uppercase tracking-tighter">Policy Master</h1>
+                <span class="text-xs text-slate-400 font-bold hidden sm:inline">가맹점 6대 정책 템플릿 관리</span>
             </div>
-            <div class="flex space-x-2">
-                <button onclick="location.href='admin_dashboard.php'" class="bg-white border-2 border-slate-200 px-6 py-3 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all">Back to Dashboard</button>
+            <div class="flex flex-wrap items-center justify-end gap-4 sm:gap-6 text-xs font-bold">
+                <span class="text-slate-500 whitespace-nowrap">접속자 ID <?php echo htmlspecialchars($admin_username); ?> · <?php echo htmlspecialchars($admin_name); ?></span>
+                <span id="current-datetime" class="text-slate-600 whitespace-nowrap">—</span>
+                <span class="text-slate-500 whitespace-nowrap">머문 <span id="elapsed-time">0분 0초</span></span>
+                <button type="button" onclick="location.href='admin_dashboard.php'" class="bg-white border-2 border-slate-200 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all shrink-0">Back to Dashboard</button>
+                <a href="logout.php" class="text-rose-500 hover:underline whitespace-nowrap shrink-0">Logout</a>
             </div>
         </header>
 <?php endif; ?>
@@ -315,6 +333,40 @@ if ($use_sidebar) {
     }
 
     window.onload = updateUI;
+    </script>
+    <script>
+    (function() {
+        var loginAt = <?php echo $admin_login_at; ?> * 1000;
+        var locale = <?php echo json_encode($header_locale); ?>;
+        function pad(n) { return (n < 10 ? '0' : '') + n; }
+        var thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+        var enMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        function formatDateTimeLocale(now) {
+            var y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+            var h = pad(now.getHours()), i = pad(now.getMinutes()), s = pad(now.getSeconds());
+            var time = h + ':' + i + ':' + s;
+            if (locale === 'th') return d + ' ' + thMonths[m] + ' ' + (y + 543) + ' ' + time;
+            if (locale === 'en' || locale === 'en_us') return enMonths[m] + ' ' + d + ', ' + y + ' ' + time;
+            if (locale === 'ja') return y + '年' + (m+1) + '月' + d + '日 ' + time;
+            if (locale === 'vi') return d + '/' + (m+1) + '/' + y + ' ' + time;
+            return y + '년 ' + (m+1) + '월 ' + d + '일 ' + time;
+        }
+        function formatElapsed(sec) {
+            var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+            if (h > 0) return h + '시간 ' + m + '분 ' + s + '초';
+            if (m > 0) return m + '분 ' + s + '초';
+            return s + '초';
+        }
+        function tick() {
+            var now = new Date();
+            var el = document.getElementById('current-datetime');
+            if (el) el.textContent = formatDateTimeLocale(now);
+            var et = document.getElementById('elapsed-time');
+            if (et && loginAt) { var sec = Math.max(0, Math.floor((now.getTime() - loginAt) / 1000)); et.textContent = formatElapsed(sec); }
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
     </script>
 </body>
 </html>

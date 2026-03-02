@@ -6,6 +6,7 @@ include 'db_config.php';
 if (($_SESSION['admin_role'] ?? '') !== 'SUPERADMIN') {
     echo "<script>alert('본사 관리자 전용입니다.'); location.href='login.php';</script>"; exit;
 }
+include 'common.php';
 
 // 미리 정의 포맷 15종 일괄 추가 (포맷명만 추가, 카테고리·옵션은 템플릿으로 생성)
 $preset_formats = [
@@ -39,6 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $sort += 10;
     }
     $_SESSION['format_added_msg'] = $added;
+    $admin_id = (int)($_SESSION['admin_id'] ?? 0);
+    $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+    log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_menu_format_list', 'create', 'menu_format', (string)$added, "메뉴 포맷 프리셋 {$added}종 일괄 추가");
     header('Location: admin_menu_format_list.php');
     exit;
 }
@@ -58,6 +62,11 @@ foreach ($formats as $f) {
     } catch (PDOException $e) { $store_counts[$f['id']] = 0; }
 }
 
+$admin_id = (int)($_SESSION['admin_id'] ?? 0);
+$admin_username = $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+$admin_name = $_SESSION['admin_name'] ?? $admin_username;
+$admin_login_at = (int)($_SESSION['admin_login_at'] ?? time());
+$header_locale = 'ko';
 $use_sidebar = (($_SESSION['admin_layout'] ?? '') === 'sidebar');
 if ($use_sidebar) {
     $admin_page_title = '메뉴 스킨';
@@ -65,31 +74,16 @@ if ($use_sidebar) {
     include 'admin_header.php';
 }
 ?>
-<?php if (!$use_sidebar): ?>
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>메뉴 스킨 - Alrira</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap'); body { font-family: 'Pretendard', sans-serif; }</style>
-</head>
-<body class="bg-slate-100 min-h-screen p-6 md:p-12">
-    <div class="max-w-[96rem] mx-auto space-y-10">
-        <header class="flex justify-between items-end">
-            <div>
-                <h1 class="text-4xl font-black italic text-slate-900 uppercase tracking-tighter">메뉴 스킨</h1>
-                <p class="text-slate-500 text-xs font-bold mt-2 uppercase">업종별 주문 메뉴 형식(스킨) 제공 · 카테고리/메뉴/옵션 관리</p>
-            </div>
-            <div class="flex space-x-2">
-                <a href="admin_menu_format_edit.php" class="inline-block bg-white border-2 border-slate-200 px-6 py-3 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all">+ 포맷 추가</a>
-                <button onclick="location.href='admin_dashboard.php'" class="bg-white border-2 border-slate-200 px-6 py-3 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all">Back to Dashboard</button>
-            </div>
-        </header>
-<?php endif; ?>
+<?php if (!$use_sidebar):
+    $admin_page_title = '메뉴 스킨';
+    $admin_page_subtitle = '업종별 주문 메뉴 형식(스킨) 제공 · 카테고리/메뉴/옵션 관리';
+    include 'admin_card_header.php';
+endif; ?>
 
         <div class="max-w-[96rem] space-y-10">
+        <div class="flex justify-end mb-4">
+            <a href="admin_menu_format_edit.php" class="bg-sky-500 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-sky-600 transition-all">+ 포맷 추가</a>
+        </div>
         <?php if (isset($_SESSION['format_added_msg'])): $n = (int)$_SESSION['format_added_msg']; unset($_SESSION['format_added_msg']); ?>
             <div class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-bold">
                 미리 정의 포맷 <?php echo $n; ?>개가 추가되었습니다.
@@ -113,7 +107,7 @@ if ($use_sidebar) {
         <?php else: ?>
             <ul class="space-y-4">
                 <?php foreach ($formats as $f): ?>
-                    <li class="bg-white rounded-2xl shadow border border-slate-100 p-6 flex items-center justify-between gap-4">
+                    <li class="bg-white rounded-[2rem] shadow-lg border border-slate-100 p-6 flex items-center justify-between gap-4">
                         <div>
                             <h3 class="text-lg font-black text-slate-800"><?php echo htmlspecialchars($f['name']); ?></h3>
                             <?php if (!empty($f['description'])): ?>
@@ -133,7 +127,5 @@ if ($use_sidebar) {
 <?php if ($use_sidebar): ?>
 <?php include 'admin_footer.php'; ?>
 <?php else: ?>
-    </div>
-</body>
-</html>
+<?php include 'admin_card_footer.php'; ?>
 <?php endif; ?>

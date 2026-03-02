@@ -17,8 +17,13 @@ $my_role = $_SESSION['admin_role'];
 
 // 1. 주문 상태 변경 처리
 if (isset($_POST['update_status'])) {
+    $order_id = (int)$_POST['order_id'];
+    $new_status = $_POST['new_status'];
     $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
-    $stmt->execute([$_POST['new_status'], $_POST['order_id']]);
+    $stmt->execute([$new_status, $order_id]);
+    $admin_id = (int)($_SESSION['admin_id'] ?? $_SESSION['store_id'] ?? 0);
+    $admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? $_SESSION['name'] ?? ('id_' . $admin_id);
+    log_activity($pdo, 'admin', $admin_id, $admin_name, 'admin_order_dashboard', 'update', 'order', (string)$order_id, "주문 상태 변경: ID {$order_id} → {$new_status}");
     header("Location: admin_order_dashboard.php"); exit;
 }
 

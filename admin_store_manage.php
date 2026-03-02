@@ -9,7 +9,10 @@ if (($_SESSION['admin_role'] ?? '') !== 'SUPERADMIN') {
     echo "<script>alert('본사 관리자 전용 페이지입니다.'); location.href='login.php';</script>"; exit;
 }
 $admin_id = (int)($_SESSION['admin_id'] ?? 0);
-$admin_name = $_SESSION['admin_name'] ?? $_SESSION['admin_username'] ?? 'Admin';
+$admin_username = $_SESSION['admin_username'] ?? ('id_' . $admin_id);
+$admin_name = $_SESSION['admin_name'] ?? $admin_username;
+$admin_login_at = (int)($_SESSION['admin_login_at'] ?? time());
+$header_locale = 'ko';
 
 // --------------------------------------------------------------------------------
 // [함수] 가맹점 코드 자동 생성 (Format: YY-CC-M-DD-Seq)
@@ -240,23 +243,28 @@ if ($use_sidebar) {
 <body class="bg-slate-100 min-h-screen p-6 md:p-12">
     <div class="max-w-[96rem] mx-auto space-y-10">
         
-        <header class="flex justify-between items-end">
-            <div>
-                <h1 class="text-4xl font-black italic text-slate-900 uppercase tracking-tighter">Store Manage</h1>
-                <p class="text-slate-500 text-xs font-bold mt-2 uppercase">가맹점 등록, 정보 수정, 정책·메뉴 스킨 할당</p>
+        <header class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2 shrink-0">
+                <h1 class="text-2xl font-black italic text-slate-900 uppercase tracking-tighter">가맹점 관리</h1>
+                <span class="text-xs text-slate-400 font-bold hidden sm:inline">가맹점 등록, 정보 수정, 정책·메뉴 스킨 할당</span>
             </div>
-            <div class="flex space-x-2">
-                <button onclick="location.href='admin_policy_manage.php'" class="bg-white border-2 border-slate-200 px-6 py-3 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all">Policy Master</button>
-                <button onclick="location.href='admin_region_manage.php'" class="bg-white border-2 border-slate-200 px-6 py-3 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all">Region Groups</button>
-                <button onclick="location.href='admin_dashboard.php'" class="bg-white border-2 border-slate-200 px-6 py-3 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all">Back to Dashboard</button>
+            <div class="flex flex-wrap items-center justify-end gap-4 sm:gap-6 text-xs font-bold">
+                <span class="text-slate-500 whitespace-nowrap">접속자 ID <?php echo htmlspecialchars($admin_username); ?> · <?php echo htmlspecialchars($admin_name); ?></span>
+                <span id="current-datetime" class="text-slate-600 whitespace-nowrap">—</span>
+                <span class="text-slate-500 whitespace-nowrap">머문 <span id="elapsed-time">0분 0초</span></span>
+                <a href="admin_policy_manage.php" class="bg-white border-2 border-slate-200 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all shrink-0">Policy Master</a>
+                <a href="admin_region_manage.php" class="bg-white border-2 border-slate-200 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all shrink-0">Region Groups</a>
+                <button type="button" onclick="location.href='admin_dashboard.php'" class="bg-white border-2 border-slate-200 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-slate-50 transition-all shrink-0">Back to Dashboard</button>
+                <a href="logout.php" class="text-rose-500 hover:underline whitespace-nowrap shrink-0">Logout</a>
             </div>
         </header>
 <?php endif; ?>
 
         <div class="max-w-[96rem] space-y-10">
-        <div class="bg-white rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden">
-            <div id="form-title" class="p-6 bg-slate-900 text-sky-400 text-[10px] font-black uppercase tracking-[0.3em] italic">Store & Policy Setup</div>
-            <form id="store-form" method="POST" enctype="multipart/form-data" onsubmit="return validateFile()" class="p-10 space-y-10">
+        <div class="bg-white rounded-[2rem] shadow-lg border border-slate-100 overflow-hidden">
+            <div class="p-8">
+            <h3 id="form-title" class="text-sm font-black text-slate-800 uppercase mb-6">Store & Policy Setup</h3>
+            <form id="store-form" method="POST" enctype="multipart/form-data" onsubmit="return validateFile()" class="space-y-10">
                 <input type="hidden" name="store_id" id="store_id">
                 <input type="hidden" name="old_biz_file" id="old_biz_file">
                 
@@ -459,6 +467,7 @@ if ($use_sidebar) {
                     <button type="submit" name="save_store" class="bg-sky-500 text-white px-20 py-5 rounded-[2rem] font-black uppercase tracking-widest shadow-xl shadow-sky-100 hover:bg-sky-600 transition-all active:scale-95">Save Changes</button>
                 </div>
             </form>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 pb-20">
@@ -468,10 +477,10 @@ if ($use_sidebar) {
                 foreach($my_r_ids as $rid) if(isset($rg_map[$rid])) $my_r_names[] = $rg_map[$rid];
                 $region_display = implode(', ', $my_r_names);
             ?>
-            <div class="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 relative group hover:shadow-2xl transition-all">
+            <div class="bg-white p-8 rounded-[2rem] shadow-lg border border-slate-100 relative group hover:shadow-xl transition-all">
                 <div class="flex justify-between items-start mb-6">
                     <div class="flex items-center gap-2">
-                        <span class="bg-slate-900 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase italic tracking-widest">#<?php echo $s['id']; ?></span>
+                        <span class="bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1 rounded-full text-[9px] font-black uppercase">#<?php echo $s['id']; ?></span>
                         <?php if(!empty($s['store_code'])): ?>
                         <span class="bg-sky-100 text-sky-600 border border-sky-200 px-2 py-1 rounded-md text-[9px] font-black shadow-sm"><?php echo htmlspecialchars($s['store_code']); ?></span>
                         <?php endif; ?>
@@ -668,7 +677,5 @@ if ($use_sidebar) {
 <?php if ($use_sidebar): ?>
 <?php include 'admin_footer.php'; ?>
 <?php else: ?>
-    </div>
-</body>
-</html>
+<?php include 'admin_card_footer.php'; ?>
 <?php endif; ?>
